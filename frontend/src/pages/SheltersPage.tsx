@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldAlert,
   Search,
@@ -9,6 +10,7 @@ import {
   Users,
   Edit2,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
@@ -16,13 +18,13 @@ import { GovButton } from '../components/ui/GovButton';
 import { GovModal } from '../components/ui/GovModal';
 import { shelterService } from '../services/shelterService';
 import { useToast } from '../contexts/ToastContext';
-import { DEMO_SHELTERS, ODISHA_DISTRICTS } from '../services/demoDataService';
+import { ODISHA_DISTRICTS } from '../services/demoDataService';
 import { CycloneShelter } from '../types/shelter';
 import { formatCoordinates } from '../utilities/formatters';
 
 export const SheltersPage: React.FC = () => {
   const { showToast } = useToast();
-  const [shelters, setShelters] = useState<CycloneShelter[]>(DEMO_SHELTERS);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('ALL');
 
@@ -31,8 +33,27 @@ export const SheltersPage: React.FC = () => {
   const [targetShelter, setTargetShelter] = useState<CycloneShelter | null>(null);
   const [newOccupancy, setNewOccupancy] = useState<number>(0);
 
+  const { data: shelters = [], isLoading, isFetching } = useQuery({
+    queryKey: ['shelters', selectedDistrict],
+    queryFn: () => shelterService.getShelters(selectedDistrict),
+    refetchInterval: 15000,
+  });
+
+  const updateOccupancyMutation = useMutation({
+    mutationFn: ({ id, count }: { id: string; count: number }) =>
+      shelterService.updateOccupancy(id, count),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['shelters'] });
+      showToast('success', 'Shelter Occupancy Updated', `Recorded ${updated.currentOccupancy} evacuees at ${updated.name}`);
+      setEditModalOpen(false);
+    },
+    onError: (err: any) => {
+      showToast('error', 'Update Failed', err.message || 'Could not record headcount.');
+    },
+  });
+
   const filtered = shelters.filter((s) => {
-    const matchesDistrict = selectedDistrict === 'ALL' || s.districtName === selectedDistrict;
+    const matchesDistrict = selectedDistrict === 'ALL' || s.districtName?.toLowerCase() === selectedDistrict.toLowerCase();
     const matchesSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -46,16 +67,12 @@ export const SheltersPage: React.FC = () => {
     setEditModalOpen(true);
   };
 
-  const handleSaveOccupancy = async () => {
+  const handleSaveOccupancy = () => {
     if (!targetShelter) return;
-    try {
-      const updated = await shelterService.updateOccupancy(targetShelter.id, newOccupancy);
-      setShelters((prev) => prev.map((s) => (s.id === targetShelter.id ? updated : s)));
-      showToast('success', 'Shelter Occupancy Updated', `Recorded ${newOccupancy} evacuees at ${targetShelter.name}`);
-      setEditModalOpen(false);
-    } catch {
-      showToast('error', 'Update Failed', 'Could not record headcount.');
-    }
+    updateOccupancyMutation.mutate({
+      id: targetShelter.id,
+      count: Number(newOccupancy),
+    });
   };
 
   return (
@@ -68,6 +85,7 @@ export const SheltersPage: React.FC = () => {
             <h1 className="text-xl font-bold text-ink-primary tracking-tight">
               Multi-Purpose Cyclone & Flood Shelter Management
             </h1>
+            {isFetching && <RefreshCw className="w-3.5 h-3.5 text-sage animate-spin" />}
           </div>
           <p className="text-xs text-sage mt-0.5">
             Real-time occupancy tracking, drinking water reserves, dry rations, and diesel generator fuel monitoring for Odisha's 800+ Cyclone Shelters.
@@ -193,7 +211,12 @@ export const SheltersPage: React.FC = () => {
               <GovButton variant="secondary" size="sm" onClick={() => setEditModalOpen(false)}>
                 Cancel
               </GovButton>
-              <GovButton variant="primary" size="sm" onClick={handleSaveOccupancy}>
+              <GovButton
+                variant="primary"
+                size="sm"
+                isLoading={updateOccupancyMutation.isPending}
+                onClick={handleSaveOccupancy}
+              >
                 Save Headcount
               </GovButton>
             </>

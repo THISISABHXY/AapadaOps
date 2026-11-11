@@ -134,7 +134,7 @@ async def save_recommendation_as_plan(
         target_district=incident.district_name or "Unknown",
         target_village=incident.village_name or "Target Zone",
         category=incident.category,
-        severity=incident.severity,
+        severity=incident.verified_priority or incident.reported_severity,
         people_stranded=incident.stranded_count,
         casualties=incident.casualties_reported,
     )
@@ -300,3 +300,4 @@ async def human_close_plan(
     """Official human closure verifying completion and releasing all tactical assets back to standby."""
     plan = await coordination_workflow.human_close_plan(db, plan_id, current_user, req.closure_notes)
     return _to_plan_response(plan)
+

@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { citizenIncidentSchema, CitizenIncidentFormData } from '../schemas/incidentSchema';
 import { incidentService } from '../services/incidentService';
+import { aiService } from '../services/aiService';
+import { evidenceService } from '../services/evidenceService';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useToast } from '../contexts/ToastContext';
 import { GovCard } from '../components/ui/GovCard';
@@ -25,7 +27,9 @@ export const IncidentSubmitPage: React.FC = () => {
   const { showToast } = useToast();
   const [lang, setLang] = useState<'EN' | 'OR'>('OR'); // Default to Odia for rural citizen accessibility
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [submittedCode, setSubmittedCode] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { latitude, longitude, loading: geoLoading, error: geoError, getPosition } = useGeolocation();
 
@@ -34,6 +38,7 @@ export const IncidentSubmitPage: React.FC = () => {
     handleSubmit,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<CitizenIncidentFormData>({
     resolver: zodResolver(citizenIncidentSchema),
@@ -59,6 +64,7 @@ export const IncidentSubmitPage: React.FC = () => {
 
   const selectedHazard = watch('hazardType');
   const personsStranded = watch('personsStranded');
+  const rawDescription = watch('rawDescription');
 
   useEffect(() => {
     if (latitude && longitude) {
@@ -67,6 +73,35 @@ export const IncidentSubmitPage: React.FC = () => {
       showToast('success', 'GPS Synced', `Location locked: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`);
     }
   }, [latitude, longitude, setValue, showToast]);
+
+  const handleAIExtract = async () => {
+    const text = getValues('rawDescription');
+    if (!text || text.trim().length < 5) {
+      showToast('warning', 'Input Needed', 'Please type a situation description before analyzing.');
+      return;
+    }
+    setIsExtracting(true);
+    try {
+      const extracted = await aiService.extractStructuredIncident(text, lang === 'OR' ? 'od' : 'en');
+      if (extracted.stranded_count > 0) {
+        setValue('personsStranded', extracted.stranded_count);
+      }
+      if (extracted.incident_category) {
+        setValue('hazardType', extracted.incident_category as any);
+      }
+      if (extracted.district) {
+        setValue('districtName', extracted.district);
+      }
+      if (extracted.location_description) {
+        setValue('villageName', extracted.location_description);
+      }
+      showToast('success', 'AI Analysis Complete', `Extracted hazard (${extracted.incident_category}) & ${extracted.stranded_count} stranded.`);
+    } catch {
+      showToast('error', 'AI Extraction Failed', 'Could not run automated analysis.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const onSubmit = async (data: CitizenIncidentFormData) => {
     setIsSubmitting(true);
@@ -86,6 +121,16 @@ export const IncidentSubmitPage: React.FC = () => {
         rawDescription: data.rawDescription,
         source: 'CITIZEN_WEB',
       });
+
+      // Upload evidence file if attached
+      if (selectedFile && result.id) {
+        try {
+          await evidenceService.uploadFile(selectedFile, { incidentId: result.id });
+        } catch {
+          console.warn('Evidence file upload failed after incident creation.');
+        }
+      }
+
       setSubmittedCode(result.incidentCode);
       showToast('success', 'Emergency SOS Dispatched', `Tracking ID: ${result.incidentCode}`);
     } catch {
@@ -398,9 +443,19 @@ export const IncidentSubmitPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-ink-primary block mb-1">
-                {lang === 'OR' ? 'ବିସ୍ତୃତ ସୂଚନା ଦିଅନ୍ତୁ (Describe Emergency Situation)' : 'Situation Description'} *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-ink-primary">
+                  {lang === 'OR' ? 'ବିସ୍ତୃତ ସୂଚନା ଦିଅନ୍ତୁ (Describe Emergency Situation)' : 'Situation Description'} *
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAIExtract}
+                  disabled={isExtracting}
+                  className="text-[11px] text-forest font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  {isExtracting ? 'Analyzing...' : '✦ AI Auto-Extract SOS Details'}
+                </button>
+              </div>
               <textarea
                 rows={3}
                 {...register('rawDescription')}
@@ -414,6 +469,24 @@ export const IncidentSubmitPage: React.FC = () => {
               {errors.rawDescription && (
                 <span className="text-xs text-emergency mt-1 block font-medium">
                   {errors.rawDescription.message}
+                </span>
+              )}
+            </div>
+
+            {/* Photo / Audio Evidence Upload */}
+            <div className="p-2.5 bg-bg-warm rounded border border-line">
+              <label className="text-xs font-semibold text-ink-primary block mb-1">
+                {lang === 'OR' ? 'ଫଟୋ / ଭଏସ ନୋଟ୍ ସଂଲଗ୍ନ କରନ୍ତୁ (Attach Photo / Evidence)' : 'Attach Photo or Ground Evidence (Optional)'}
+              </label>
+              <input
+                type="file"
+                accept="image/*,audio/*"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                className="w-full text-xs text-ink-secondary file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-forest-subtle file:text-forest hover:file:bg-forest/20"
+              />
+              {selectedFile && (
+                <span className="text-[10px] text-forest font-mono block mt-1">
+                  ✓ {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB) ready for cryptographic hash upload
                 </span>
               )}
             </div>

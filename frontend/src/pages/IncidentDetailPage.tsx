@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   ShieldAlert,
@@ -25,8 +26,13 @@ export const IncidentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [incident, setIncident] = useState<Incident | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
+
+  const { data: incident, isLoading: loading } = useQuery({
+    queryKey: ['incident', id],
+    queryFn: () => (id ? incidentService.getIncidentById(id) : null),
+    enabled: Boolean(id),
+  });
 
   // Administrative Action Form State
   const [selectedStatus, setSelectedStatus] = useState<'VERIFIED' | 'REJECTED' | 'DISPUTED'>('VERIFIED');
@@ -35,26 +41,24 @@ export const IncidentDetailPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
-    if (id) {
-      incidentService.getIncidentById(id).then((data) => {
-        setIncident(data);
-        if (data?.verifiedPriority) setSelectedPriority(data.verifiedPriority);
-        setLoading(false);
-      });
+    if (incident?.verifiedPriority) {
+      setSelectedPriority(incident.verifiedPriority);
     }
-  }, [id]);
+  }, [incident]);
 
   const handleAuditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!incident) return;
     setIsSubmitting(true);
     try {
-      const updated = await incidentService.verifyIncident(incident.id, {
+      await incidentService.verifyIncident(incident.id, {
         status: selectedStatus,
         verifiedPriority: selectedPriority,
         verificationNotes,
       });
-      setIncident(updated);
+      queryClient.invalidateQueries({ queryKey: ['incident', id] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      queryClient.invalidateQueries({ queryKey: ['verification-queue'] });
       showToast('success', 'Incident Status Updated', `Case file ${incident.incidentCode} transitioned to ${selectedStatus}`);
     } catch {
       showToast('error', 'Update Failed', 'Unable to record verification status');

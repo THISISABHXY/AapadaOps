@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Package,
   Plus,
@@ -10,20 +11,63 @@ import {
   Download,
   Ship,
   Droplets,
+  RefreshCw,
 } from 'lucide-react';
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
 import { GovModal } from '../components/ui/GovModal';
-import { DEMO_RESOURCES } from '../services/demoDataService';
+import { resourceService } from '../services/resourceService';
+import { useToast } from '../contexts/ToastContext';
 import { TacticalResource, ResourceCategory } from '../types/resource';
 import { formatDate } from '../utilities/formatters';
 
 export const ResourceManagementPage: React.FC = () => {
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [resources, setResources] = useState<TacticalResource[]>(DEMO_RESOURCES);
   const [addModalOpen, setAddModalOpen] = useState(false);
+
+  // New Equipment Form State
+  const [newEquipName, setNewEquipName] = useState('');
+  const [newEquipCat, setNewEquipCat] = useState('POWER_BOAT');
+  const [newEquipOrg, setNewEquipOrg] = useState('ODRAF');
+  const [newEquipDistrict, setNewEquipDistrict] = useState('Kendrapara');
+
+  const { data: resources = [], isLoading, isFetching } = useQuery({
+    queryKey: ['resources', selectedCategory],
+    queryFn: () => resourceService.getResources(selectedCategory === 'ALL' ? undefined : selectedCategory),
+    refetchInterval: 15000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => resourceService.createResource(data),
+    onSuccess: (newRes) => {
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      showToast('success', 'Asset Registered', `Registered ${newRes.name} (${newRes.assetCode}) into ODRN database.`);
+      setAddModalOpen(false);
+      setNewEquipName('');
+    },
+    onError: (err: any) => {
+      showToast('error', 'Registration Failed', err.message || 'Could not register equipment.');
+    },
+  });
+
+  const handleRegisterAsset = () => {
+    if (!newEquipName.trim()) {
+      showToast('error', 'Required Field', 'Please enter asset name/specification.');
+      return;
+    }
+    createMutation.mutate({
+      name: newEquipName.trim(),
+      category: newEquipCat,
+      organization: newEquipOrg,
+      district_name: newEquipDistrict,
+      quantity: 1,
+      unit_of_measure: 'unit',
+    });
+  };
 
   const filteredResources = resources.filter((res) => {
     const matchesCategory = selectedCategory === 'ALL' || res.category === selectedCategory;
@@ -44,6 +88,7 @@ export const ResourceManagementPage: React.FC = () => {
             <h1 className="text-xl font-bold text-ink-primary tracking-tight">
               Tactical Resource & Equipment Management (ODRN)
             </h1>
+            {isFetching && <RefreshCw className="w-3.5 h-3.5 text-sage animate-spin" />}
           </div>
           <p className="text-xs text-sage mt-0.5">
             Odisha Disaster Resource Network. Real-time dynamic inventory of rescue boats, dewatering pumps, chainsaws, and generator sets.
@@ -69,7 +114,7 @@ export const ResourceManagementPage: React.FC = () => {
             { id: 'ALL', label: 'All Equipment' },
             { id: 'RESCUE_BOAT', label: 'Rescue Boats' },
             { id: 'DEWATERING_PUMP', label: 'Dewatering Pumps' },
-            { id: 'CHAINSAW', label: 'Chainsaws' },
+            { id: 'CHAINSAW', label: 'Chainsaws / JCB' },
             { id: 'DG_SET', label: 'DG Sets' },
             { id: 'RELIEF_KITS', label: 'Relief Rations' },
           ].map((cat) => (
@@ -176,9 +221,8 @@ export const ResourceManagementPage: React.FC = () => {
             <GovButton
               variant="primary"
               size="sm"
-              onClick={() => {
-                setAddModalOpen(false);
-              }}
+              isLoading={createMutation.isPending}
+              onClick={handleRegisterAsset}
             >
               Save Equipment to ODRN
             </GovButton>
@@ -187,31 +231,63 @@ export const ResourceManagementPage: React.FC = () => {
       >
         <div className="space-y-3">
           <div>
+            <label className="text-xs font-semibold text-ink-primary block mb-1">Equipment Name / Description *</label>
+            <input
+              type="text"
+              value={newEquipName}
+              onChange={(e) => setNewEquipName(e.target.value)}
+              placeholder="e.g. Aska Inflatable Motor Boat (8 Person)"
+              className="w-full text-xs h-9 px-3 bg-white border border-line rounded text-ink-primary"
+            />
+          </div>
+
+          <div>
             <label className="text-xs font-semibold text-ink-primary block mb-1">Equipment Category *</label>
-            <select className="w-full text-xs h-9 px-3 bg-white border border-line rounded text-ink-primary">
-              <option value="RESCUE_BOAT">Motorized Rescue Boat (BAUT with OBM)</option>
+            <select
+              value={newEquipCat}
+              onChange={(e) => setNewEquipCat(e.target.value)}
+              className="w-full text-xs h-9 px-3 bg-white border border-line rounded text-ink-primary"
+            >
+              <option value="POWER_BOAT">Power Rescue Boat (OBM 40HP)</option>
+              <option value="INFLATABLE_BOAT">Inflatable Rescue Boat</option>
               <option value="DEWATERING_PUMP">High Capacity Dewatering Pump (1000 LPM)</option>
-              <option value="CHAINSAW">Tree Clearing Chainsaw (Stihl 24")</option>
-              <option value="DG_SET">Silent Diesel Generator Set</option>
+              <option value="JCB_EXCAVATOR">JCB / Heavy Earthmover</option>
+              <option value="DIESEL_GENERATOR">Silent Diesel Generator (125 kVA)</option>
+              <option value="EMERGENCY_RATION_KIT">Emergency Relief Dry Rations</option>
             </select>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-ink-primary block mb-1">Asset Code / Serial *</label>
-            <input
-              type="text"
-              placeholder="e.g. BAUT-PURI-042"
-              className="w-full text-xs h-9 px-3 bg-white border border-line rounded text-ink-primary font-mono"
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-ink-primary block mb-1">Operating Agency *</label>
+              <select
+                value={newEquipOrg}
+                onChange={(e) => setNewEquipOrg(e.target.value)}
+                className="w-full text-xs h-9 px-3 bg-white border border-line rounded text-ink-primary"
+              >
+                <option value="ODRAF">ODRAF</option>
+                <option value="NDRF">NDRF</option>
+                <option value="FIRE_SERVICES">Odisha Fire Services</option>
+                <option value="CIVIL_DEFENCE">Civil Defence</option>
+                <option value="REVENUE">Revenue & Disaster Mgmt</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="text-xs font-semibold text-ink-primary block mb-1">Assigned Staging Depot *</label>
-            <input
-              type="text"
-              placeholder="e.g. Krushnaprasad Block Office Depot"
-              className="w-full text-xs h-9 px-3 bg-white border border-line rounded text-ink-primary"
-            />
+            <div>
+              <label className="text-xs font-semibold text-ink-primary block mb-1">Stationed District *</label>
+              <select
+                value={newEquipDistrict}
+                onChange={(e) => setNewEquipDistrict(e.target.value)}
+                className="w-full text-xs h-9 px-3 bg-white border border-line rounded text-ink-primary"
+              >
+                <option value="Kendrapara">Kendrapara</option>
+                <option value="Puri">Puri</option>
+                <option value="Bhadrak">Bhadrak</option>
+                <option value="Balasore">Balasore</option>
+                <option value="Jagatsinghpur">Jagatsinghpur</option>
+                <option value="Ganjam">Ganjam</option>
+              </select>
+            </div>
           </div>
         </div>
       </GovModal>

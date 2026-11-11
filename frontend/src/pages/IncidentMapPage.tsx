@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Layers,
   Filter,
@@ -13,24 +14,43 @@ import {
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
-import {
-  DEMO_INCIDENTS,
-  DEMO_SHELTERS,
-  DEMO_TACTICAL_UNITS,
-  ODISHA_DISTRICTS,
-} from '../services/demoDataService';
+import { incidentService } from '../services/incidentService';
+import { shelterService } from '../services/shelterService';
+import { taskService } from '../services/taskService';
+import { ODISHA_DISTRICTS } from '../services/demoDataService';
 import { Incident } from '../types/incident';
 import { formatCoordinates, formatTimeAgo } from '../utilities/formatters';
 
 export const IncidentMapPage: React.FC = () => {
-  const [selectedDistrict, setSelectedDistrict] = useState<string>('Puri');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
   const [showCycloneTrack, setShowCycloneTrack] = useState<boolean>(true);
   const [showFloodZones, setShowFloodZones] = useState<boolean>(true);
   const [showShelters, setShowShelters] = useState<boolean>(true);
   const [showUnits, setShowUnits] = useState<boolean>(true);
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
 
-  const [activeIncident, setActiveIncident] = useState<Incident | null>(DEMO_INCIDENTS[0]);
+  const { data: incidents = [] } = useQuery({
+    queryKey: ['incidents', selectedDistrict],
+    queryFn: () => incidentService.getIncidents({ districtId: selectedDistrict }),
+  });
+
+  const { data: shelters = [] } = useQuery({
+    queryKey: ['shelters', selectedDistrict],
+    queryFn: () => shelterService.getShelters(selectedDistrict),
+  });
+
+  const { data: tacticalUnits = [] } = useQuery({
+    queryKey: ['units', selectedDistrict],
+    queryFn: () => taskService.getTacticalUnits(selectedDistrict),
+  });
+
+  const [activeIncident, setActiveIncident] = useState<Incident | null>(null);
+
+  useEffect(() => {
+    if (!activeIncident && incidents.length > 0) {
+      setActiveIncident(incidents[0]);
+    }
+  }, [incidents, activeIncident]);
 
   return (
     <div className="h-[calc(100vh-6rem)] flex flex-col space-y-2">
@@ -96,7 +116,7 @@ export const IncidentMapPage: React.FC = () => {
               className="rounded text-forest focus:ring-forest"
             />
             <span className="flex items-center gap-1 text-[11px] font-medium">
-              <ShieldAlert className="w-3.5 h-3.5 text-emergency" /> Incidents ({DEMO_INCIDENTS.length})
+              <ShieldAlert className="w-3.5 h-3.5 text-emergency" /> Incidents ({incidents.length})
             </span>
           </label>
 
@@ -108,7 +128,7 @@ export const IncidentMapPage: React.FC = () => {
               className="rounded text-forest focus:ring-forest"
             />
             <span className="flex items-center gap-1 text-[11px] font-medium">
-              <Building2 className="w-3.5 h-3.5 text-forest" /> Shelters ({DEMO_SHELTERS.length})
+              <Building2 className="w-3.5 h-3.5 text-forest" /> Shelters ({shelters.length})
             </span>
           </label>
 
@@ -120,7 +140,7 @@ export const IncidentMapPage: React.FC = () => {
               className="rounded text-forest focus:ring-forest"
             />
             <span className="flex items-center gap-1 text-[11px] font-medium">
-              <Ship className="w-3.5 h-3.5 text-sage" /> Tactical Units ({DEMO_TACTICAL_UNITS.length})
+              <Ship className="w-3.5 h-3.5 text-sage" /> Tactical Units ({tacticalUnits.length})
             </span>
           </label>
         </div>
@@ -153,7 +173,7 @@ export const IncidentMapPage: React.FC = () => {
           {/* Map Vector Pins Simulation */}
           <div className="z-10 my-auto flex flex-wrap gap-3 justify-center items-center">
             {showIncidents &&
-              DEMO_INCIDENTS.slice(0, 6).map((inc) => (
+              incidents.slice(0, 8).map((inc) => (
                 <button
                   key={inc.id}
                   onClick={() => setActiveIncident(inc)}
@@ -175,7 +195,7 @@ export const IncidentMapPage: React.FC = () => {
                     </GovBadge>
                   </div>
                   <div className="text-xs font-semibold text-ink-primary mt-1 truncate">
-                    {inc.villageName}, {inc.blockName}
+                    {inc.villageName}, {inc.blockName || inc.districtName}
                   </div>
                   <div className="text-[11px] text-sage font-mono mt-0.5">
                     {formatCoordinates(inc.latitude, inc.longitude)}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Settings,
   Sliders,
@@ -7,12 +8,15 @@ import {
   Server,
   Save,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { useToast } from '../contexts/ToastContext';
+import { auditService } from '../services/auditService';
+import { formatTimeAgo } from '../utilities/formatters';
 
 export const SystemSettingsPage: React.FC = () => {
   const { isDemoMode, setDemoMode } = useDemoMode();
@@ -21,6 +25,12 @@ export const SystemSettingsPage: React.FC = () => {
   const [clusterRadiusMeters, setClusterRadiusMeters] = useState<number>(250);
   const [clusterTimeWindowHours, setClusterTimeWindowHours] = useState<number>(2);
   const [rateLimitPerMinute, setRateLimitPerMinute] = useState<number>(120);
+
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ['audit-logs'],
+    queryFn: () => auditService.getAuditLogs({ limit: 10 }),
+    refetchInterval: 20000,
+  });
 
   const handleSaveSettings = () => {
     showToast('success', 'Configuration Saved', 'Spatial clustering thresholds updated in system memory.');
@@ -198,6 +208,46 @@ export const SystemSettingsPage: React.FC = () => {
                 <td className="px-4 py-2.5 text-sage">ewds.osdma.gov.in/towers</td>
                 <td className="px-4 py-2.5 text-forest font-semibold">● READY (122 Towers)</td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      </GovCard>
+
+      {/* 4. Immutable Audit & Compliance Log */}
+      <GovCard
+        header={
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-forest" />
+              <span className="font-semibold text-xs uppercase tracking-wider text-sage">
+                System Regulatory Audit & Governance Log
+              </span>
+            </div>
+            <GovBadge variant="forest" size="sm">TAMPER-EVIDENT</GovBadge>
+          </div>
+        }
+      >
+        <div className="overflow-x-auto text-xs">
+          <table className="w-full text-left">
+            <thead className="bg-bg-warm text-sage font-semibold uppercase text-[11px] border-b border-line">
+              <tr>
+                <th className="px-4 py-2">Action</th>
+                <th className="px-4 py-2">Target Entity</th>
+                <th className="px-4 py-2">Officer / Actor</th>
+                <th className="px-4 py-2">Audit Narrative</th>
+                <th className="px-4 py-2">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line font-mono text-ink-primary">
+              {auditLogs.map((log) => (
+                <tr key={log.id}>
+                  <td className="px-4 py-2.5 font-bold text-forest">{log.action}</td>
+                  <td className="px-4 py-2.5 text-sage">{log.entity_type}</td>
+                  <td className="px-4 py-2.5">{log.actor_name || log.actor_email || 'System'}</td>
+                  <td className="px-4 py-2.5 max-w-xs truncate text-ink-secondary">{log.description}</td>
+                  <td className="px-4 py-2.5 text-sage">{formatTimeAgo(log.created_at)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -17,6 +17,7 @@ from app.models.base import BaseModel
 
 class TaskStatus(str, enum.Enum):
     PENDING = "PENDING"
+    ASSIGNED = "ASSIGNED"
     IN_PROGRESS = "IN_PROGRESS"
     BLOCKED = "BLOCKED"
     COMPLETED = "COMPLETED"

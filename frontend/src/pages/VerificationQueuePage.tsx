@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CheckSquare,
   Filter,
@@ -25,26 +26,27 @@ import { formatCoordinates, formatTimeAgo, formatMaskedPhone } from '../utilitie
 
 export const VerificationQueuePage: React.FC = () => {
   const { showToast } = useToast();
-  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const queryClient = useQueryClient();
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+
+  const { data: incidents = [], isLoading: loading } = useQuery({
+    queryKey: ['verification-queue'],
+    queryFn: () => incidentService.getVerificationQueue(),
+    refetchInterval: 10000,
+  });
+
+  useEffect(() => {
+    if (!selectedIncident && incidents.length > 0) {
+      setSelectedIncident(incidents[0]);
+    } else if (selectedIncident && !incidents.find((i) => i.id === selectedIncident.id)) {
+      setSelectedIncident(incidents[0] || null);
+    }
+  }, [incidents, selectedIncident]);
 
   // Rejection Modal State
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('HOAX_REPORT');
   const [rejectionNotes, setRejectionNotes] = useState('');
-
-  const loadQueue = async () => {
-    setLoading(true);
-    const data = await incidentService.getIncidents({ status: 'NEEDS_VERIFICATION' });
-    setIncidents(data);
-    setSelectedIncident(data[0] || null);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadQueue();
-  }, []);
 
   const handleVerify = async (priority: PriorityLevel = 'CRITICAL') => {
     if (!selectedIncident) return;
@@ -55,7 +57,8 @@ export const VerificationQueuePage: React.FC = () => {
         verificationNotes: 'Ground truth confirmed with local Revenue Inspector and Sarpanch.',
       });
       showToast('success', 'Incident Verified', `Report ${selectedIncident.incidentCode} marked as verified ground truth.`);
-      loadQueue();
+      queryClient.invalidateQueries({ queryKey: ['verification-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
     } catch {
       showToast('error', 'Action Failed', 'Could not verify incident.');
     }
@@ -73,7 +76,8 @@ export const VerificationQueuePage: React.FC = () => {
       showToast('info', 'Report Rejected', `Case ${selectedIncident.incidentCode} rejected and archived with justification.`);
       setRejectModalOpen(false);
       setRejectionNotes('');
-      loadQueue();
+      queryClient.invalidateQueries({ queryKey: ['verification-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
     } catch {
       showToast('error', 'Action Failed', 'Could not record rejection.');
     }

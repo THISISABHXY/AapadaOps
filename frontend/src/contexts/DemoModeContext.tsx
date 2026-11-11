@@ -11,7 +11,7 @@ const DemoModeContext = createContext<DemoModeContextType | undefined>(undefined
 export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('aapadaops_demo_mode');
-    return saved !== null ? saved === 'true' : true; // Default to demo mode enabled during initial frontend review
+    return saved !== null ? saved === 'true' : false; // Default to Live API Mode
   });
 
   useEffect(() => {

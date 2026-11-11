@@ -5,7 +5,9 @@ export type TaskStatus =
   | 'ASSIGNED'
   | 'EN_ROUTE'
   | 'ON_SCENE'
+  | 'IN_PROGRESS'
   | 'RESOLVED'
+  | 'COMPLETED'
   | 'CANCELLED';
 
 export interface TacticalUnit {
@@ -18,7 +20,7 @@ export interface TacticalUnit {
   homeStation: string;
   latitude: number;
   longitude: number;
-  status: 'STANDBY' | 'MOBILIZED' | 'DEPLOYED' | 'MAINTENANCE' | 'OFFLINE';
+  status: 'STANDBY' | 'MOBILIZED' | 'DEPLOYED' | 'AVAILABLE' | 'MAINTENANCE' | 'OFFLINE';
   commanderName: string;
   commanderPhone: string;
   crewCount: number;
@@ -27,6 +29,7 @@ export interface TacticalUnit {
     pumps?: number;
     chainsaws?: number;
     dgSets?: number;
+    ambulances?: number;
   };
 }
 
@@ -40,18 +43,23 @@ export interface Task {
   assignedUnitId: string;
   assignedUnitName: string;
   assignedUnitOrg: string;
-  assignedById: string;
-  assignedByName: string;
+  assignedById?: string;
+  assignedByName?: string;
   status: TaskStatus;
   targetVillage: string;
   targetLatitude: number;
   targetLongitude: number;
   slaDeadline: string;
+  deadline?: string;
+  slaHours?: number;
   isOverdue?: boolean;
   groundReport?: string | null;
+  resolutionNotes?: string;
+  progressUpdates?: any[];
   personsRescued?: number;
   resolvedAt?: string | null;
+  completedAt?: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 

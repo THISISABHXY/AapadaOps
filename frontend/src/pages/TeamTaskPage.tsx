@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ListTodo,
   Clock,
@@ -7,19 +8,25 @@ import {
   ArrowRight,
   Shield,
   User,
+  Navigation,
 } from 'lucide-react';
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
 import { taskService } from '../services/taskService';
 import { useToast } from '../contexts/ToastContext';
-import { DEMO_TASKS } from '../services/demoDataService';
 import { Task, TaskStatus } from '../types/task';
 import { formatTimeAgo } from '../utilities/formatters';
 
 export const TeamTaskPage: React.FC = () => {
   const { showToast } = useToast();
-  const [tasks, setTasks] = useState<Task[]>(DEMO_TASKS);
+  const queryClient = useQueryClient();
+
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => taskService.getTasks(),
+    refetchInterval: 10000,
+  });
 
   const columns: { id: TaskStatus; label: string; count: number }[] = [
     {
@@ -35,22 +42,23 @@ export const TeamTaskPage: React.FC = () => {
     {
       id: 'ON_SCENE',
       label: 'On Scene / Active Rescue',
-      count: tasks.filter((t) => t.status === 'ON_SCENE').length,
+      count: tasks.filter((t) => t.status === 'ON_SCENE' || t.status === 'IN_PROGRESS').length,
     },
     {
       id: 'RESOLVED',
-      label: 'Resolved / Safe',
-      count: tasks.filter((t) => t.status === 'RESOLVED').length,
+      label: 'Resolved / Completed',
+      count: tasks.filter((t) => t.status === 'RESOLVED' || t.status === 'COMPLETED').length,
     },
   ];
 
   const handleAdvanceStatus = async (task: Task, nextStatus: TaskStatus) => {
     try {
-      const updated = await taskService.updateTaskStatus(task.id, nextStatus);
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)));
+      await taskService.updateTaskStatus(task.id, nextStatus, `Advanced to ${nextStatus} by on-ground controller.`);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
       showToast('success', 'Task Status Advanced', `Mission ${task.taskCode} is now ${nextStatus}`);
-    } catch {
-      showToast('error', 'Status Update Failed', 'Could not advance task state.');
+    } catch (err: any) {
+      showToast('error', 'Status Update Failed', err?.message || 'Could not advance task state.');
     }
   };
 
@@ -72,118 +80,111 @@ export const TeamTaskPage: React.FC = () => {
 
         <div className="flex items-center gap-2 text-xs font-mono">
           <span className="bg-white border border-line px-2.5 py-1 rounded font-semibold text-ink-primary">
-            Active Missions: {tasks.filter((t) => t.status !== 'RESOLVED').length}
+            Active Missions: {tasks.filter((t) => t.status !== 'RESOLVED' && t.status !== 'COMPLETED').length}
           </span>
           <span className="bg-forest-subtle text-forest border border-forest/30 px-2.5 py-1 rounded font-semibold">
-            Resolved: {tasks.filter((t) => t.status === 'RESOLVED').length}
+            Resolved: {tasks.filter((t) => t.status === 'RESOLVED' || t.status === 'COMPLETED').length}
           </span>
         </div>
       </div>
 
-      {/* 2. Four Operational Swimlanes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+      {/* 2. Four-Column Kanban Board */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {columns.map((col) => {
-          const colTasks = tasks.filter((t) => t.status === col.id);
+          const colTasks = tasks.filter((t) => {
+            if (col.id === 'ON_SCENE') return t.status === 'ON_SCENE' || t.status === 'IN_PROGRESS';
+            if (col.id === 'RESOLVED') return t.status === 'RESOLVED' || t.status === 'COMPLETED';
+            return t.status === col.id;
+          });
 
           return (
-            <div key={col.id} className="bg-white rounded border border-line overflow-hidden shadow-xs flex flex-col">
+            <div key={col.id} className="bg-bg-warm/80 rounded border border-line p-2.5 flex flex-col min-h-[500px]">
               {/* Column Header */}
-              <div className="p-3 border-b border-line bg-bg-warm/60 flex items-center justify-between">
-                <span className="text-xs font-bold text-ink-primary uppercase tracking-wider">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-line">
+                <span className="text-xs font-bold text-ink-primary tracking-tight">
                   {col.label}
                 </span>
-                <span className="font-mono text-xs font-bold bg-white px-2 py-0.5 rounded border border-line text-ink-secondary">
-                  {col.count}
+                <span className="w-5 h-5 rounded-full bg-white border border-line font-mono text-[11px] font-bold text-ink-primary flex items-center justify-center">
+                  {colTasks.length}
                 </span>
               </div>
 
-              {/* Column Body Cards */}
-              <div className="p-2 space-y-2.5 min-h-[500px] max-h-[700px] overflow-y-auto bg-bg-warm/20">
+              {/* Tasks List in Column */}
+              <div className="space-y-2 flex-1 overflow-y-auto">
                 {colTasks.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-sage italic">
-                    No missions in this stage
+                  <div className="text-center py-10 text-xs text-sage font-mono">
+                    No active tasks
                   </div>
                 ) : (
                   colTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className={`p-3 bg-white rounded border transition-all shadow-xs space-y-2 ${
-                        task.isOverdue ? 'border-emergency/60 bg-emergency-subtle/20' : 'border-line hover:border-line-dark'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-forest">
-                          {task.taskCode}
-                        </span>
-                        <GovBadge
-                          variant={task.priority === 'CRITICAL' ? 'emergency' : 'amber'}
-                          size="sm"
-                        >
-                          {task.priority}
-                        </GovBadge>
-                      </div>
-
-                      <h4 className="text-xs font-semibold text-ink-primary leading-snug">
-                        {task.title}
-                      </h4>
-
-                      <div className="space-y-1 text-[11px] font-mono text-sage pt-1 border-t border-line/60">
-                        <div className="flex justify-between">
-                          <span>Target:</span>
-                          <strong className="text-ink-primary">{task.targetVillage}</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Unit:</span>
-                          <span className="text-forest font-semibold">{task.assignedUnitOrg}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>SLA Status:</span>
-                          <span className={task.isOverdue ? 'text-emergency font-bold' : 'text-sage'}>
-                            {task.isOverdue ? '⚠ Overdue' : 'On Schedule'}
+                    <GovCard key={task.id} padding="sm" className="bg-white hover:border-line-dark transition-colors">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[11px] font-bold text-ink-primary">
+                            {task.taskCode}
                           </span>
+                          <GovBadge
+                            variant={task.priority === 'CRITICAL' ? 'emergency' : 'amber'}
+                            size="sm"
+                          >
+                            {task.priority}
+                          </GovBadge>
+                        </div>
+
+                        <h4 className="text-xs font-semibold text-ink-primary leading-tight line-clamp-2">
+                          {task.title}
+                        </h4>
+
+                        <div className="text-[11px] text-sage flex items-center gap-1 font-mono">
+                          <Shield className="w-3 h-3 text-forest" />
+                          <span>{task.assignedUnitName}</span>
+                        </div>
+
+                        <div className="pt-2 border-t border-line text-[10px] text-sage flex items-center justify-between font-mono">
+                          <span>SLA: {task.slaHours || 4} Hours</span>
+                          <span>Target: {task.targetVillage}</span>
+                        </div>
+
+                        {/* Lifecycle Steppers */}
+                        <div className="pt-2 flex items-center justify-between gap-1">
+                          {task.status === 'ASSIGNED' && (
+                            <GovButton
+                              variant="secondary"
+                              size="sm"
+                              className="w-full text-[10px] h-7"
+                              onClick={() => handleAdvanceStatus(task, 'EN_ROUTE')}
+                            >
+                              Mobilize En Route →
+                            </GovButton>
+                          )}
+                          {task.status === 'EN_ROUTE' && (
+                            <GovButton
+                              variant="primary"
+                              size="sm"
+                              className="w-full text-[10px] h-7"
+                              onClick={() => handleAdvanceStatus(task, 'ON_SCENE')}
+                            >
+                              Arrived On Scene →
+                            </GovButton>
+                          )}
+                          {(task.status === 'ON_SCENE' || task.status === 'IN_PROGRESS') && (
+                            <GovButton
+                              variant="primary"
+                              size="sm"
+                              className="w-full text-[10px] h-7 bg-forest hover:bg-forest/90"
+                              onClick={() => handleAdvanceStatus(task, 'COMPLETED')}
+                            >
+                              Mark Completed ✓
+                            </GovButton>
+                          )}
+                          {(task.status === 'RESOLVED' || task.status === 'COMPLETED') && (
+                            <span className="text-[10px] text-forest font-semibold flex items-center gap-1 mx-auto py-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Mission Secured
+                            </span>
+                          )}
                         </div>
                       </div>
-
-                      {/* Action Advance State Button */}
-                      <div className="pt-2 border-t border-line">
-                        {task.status === 'ASSIGNED' && (
-                          <GovButton
-                            variant="primary"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => handleAdvanceStatus(task, 'EN_ROUTE')}
-                          >
-                            Mark En Route →
-                          </GovButton>
-                        )}
-                        {task.status === 'EN_ROUTE' && (
-                          <GovButton
-                            variant="primary"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => handleAdvanceStatus(task, 'ON_SCENE')}
-                          >
-                            Mark On Scene →
-                          </GovButton>
-                        )}
-                        {task.status === 'ON_SCENE' && (
-                          <GovButton
-                            variant="primary"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => handleAdvanceStatus(task, 'RESOLVED')}
-                          >
-                            Mark Rescue Resolved ✓
-                          </GovButton>
-                        )}
-                        {task.status === 'RESOLVED' && (
-                          <div className="text-[11px] font-mono text-forest flex items-center justify-center gap-1 font-semibold py-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Mission Accomplished</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    </GovCard>
                   ))
                 )}
               </div>
@@ -194,4 +195,3 @@ export const TeamTaskPage: React.FC = () => {
     </div>
   );
 };
-

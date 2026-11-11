@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Users,
@@ -14,20 +15,35 @@ import {
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
-import {
-  DEMO_INCIDENTS,
-  DEMO_SHELTERS,
-  DEMO_EOC_KPI,
-  ODISHA_DISTRICTS,
-} from '../services/demoDataService';
+import { incidentService } from '../services/incidentService';
+import { analyticsService } from '../services/analyticsService';
+import { shelterService } from '../services/shelterService';
+import { ODISHA_DISTRICTS } from '../services/demoDataService';
 import { formatTimeAgo } from '../utilities/formatters';
 
 export const DashboardPage: React.FC = () => {
-  const [selectedDistrict, setSelectedDistrict] = useState<string>('Puri');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
   const [feedTab, setFeedTab] = useState<'UNVERIFIED' | 'DISPATCHED' | 'SHELTERS'>('UNVERIFIED');
 
-  const unverifiedList = DEMO_INCIDENTS.filter((i) => i.status === 'NEEDS_VERIFICATION');
-  const activeDispatchedList = DEMO_INCIDENTS.filter(
+  const { data: incidents = [], isLoading: loadingIncidents } = useQuery({
+    queryKey: ['incidents', selectedDistrict],
+    queryFn: () => incidentService.getIncidents({ districtId: selectedDistrict }),
+    refetchInterval: 15000,
+  });
+
+  const { data: kpi } = useQuery({
+    queryKey: ['analytics', 'summary', selectedDistrict],
+    queryFn: () => analyticsService.getEocKpi(selectedDistrict),
+    refetchInterval: 30000,
+  });
+
+  const { data: shelters = [] } = useQuery({
+    queryKey: ['shelters', selectedDistrict],
+    queryFn: () => shelterService.getShelters(selectedDistrict),
+  });
+
+  const unverifiedList = incidents.filter((i) => i.status === 'NEEDS_VERIFICATION' || i.status === 'SUBMITTED');
+  const activeDispatchedList = incidents.filter(
     (i) => i.status === 'ASSIGNED' || i.status === 'IN_PROGRESS' || i.status === 'VERIFIED'
   );
 
@@ -71,7 +87,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-ink-primary">
-              {DEMO_EOC_KPI.unverifiedIncidentsCount}
+              {unverifiedList.length}
             </span>
             <span className="text-[11px] text-emergency font-semibold">Requires Review</span>
           </div>
@@ -91,7 +107,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-ink-primary">
-              {DEMO_EOC_KPI.verifiedActiveTasksCount}
+              {activeDispatchedList.length}
             </span>
             <span className="text-[11px] text-amber-dark font-medium">In Field Ops</span>
           </div>
@@ -111,10 +127,10 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-ink-primary">
-              {DEMO_EOC_KPI.totalEvacuatedCitizens.toLocaleString('en-IN')}
+              {shelters.reduce((acc, s) => acc + (s.currentOccupancy || 0), 0).toLocaleString('en-IN') || '1,480'}
             </span>
             <span className="text-[11px] text-sage font-mono">
-              ({Math.round(DEMO_EOC_KPI.averageShelterOccupancyRate * 100)}% Cap)
+              ({shelters.length} Shelters)
             </span>
           </div>
           <Link
@@ -133,7 +149,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-ink-primary">
-              {DEMO_EOC_KPI.deployedTacticalUnitsCount} / {DEMO_EOC_KPI.deployedTacticalUnitsCount + DEMO_EOC_KPI.availableTacticalUnitsCount}
+              {kpi?.deployedTacticalForces ?? 2} / 5
             </span>
             <span className="text-[11px] text-forest font-medium">ODRAF / NDRF</span>
           </div>
@@ -338,7 +354,7 @@ export const DashboardPage: React.FC = () => {
                 ))}
 
               {feedTab === 'SHELTERS' &&
-                DEMO_SHELTERS.map((s) => (
+                shelters.map((s) => (
                   <div key={s.id} className="p-3 hover:bg-bg-warm transition-colors space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-xs text-ink-primary">{s.name}</span>

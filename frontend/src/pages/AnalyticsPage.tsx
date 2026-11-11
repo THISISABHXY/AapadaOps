@@ -1,4 +1,5 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   BarChart3,
   Download,
@@ -11,6 +12,7 @@ import {
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
+import { analyticsService } from '../services/analyticsService';
 import {
   DEMO_EOC_KPI,
   DEMO_HOURLY_TRENDS,
@@ -19,6 +21,26 @@ import {
 } from '../services/demoDataService';
 
 export const AnalyticsPage: React.FC = () => {
+  const { data: kpi = DEMO_EOC_KPI } = useQuery({
+    queryKey: ['analytics', 'kpi'],
+    queryFn: () => analyticsService.getEocKpi(),
+  });
+
+  const { data: hourlyTrends = DEMO_HOURLY_TRENDS } = useQuery({
+    queryKey: ['analytics', 'hourly-trends'],
+    queryFn: () => analyticsService.getHourlyTrends(),
+  });
+
+  const { data: hazardBreakdown = DEMO_HAZARD_BREAKDOWN } = useQuery({
+    queryKey: ['analytics', 'hazard-breakdown'],
+    queryFn: () => analyticsService.getHazardBreakdown(),
+  });
+
+  const { data: districtReadiness = DEMO_DISTRICT_READINESS } = useQuery({
+    queryKey: ['analytics', 'district-readiness'],
+    queryFn: () => analyticsService.getDistrictReadiness(),
+  });
+
   const handlePrintSitRep = () => {
     window.print();
   };
@@ -56,7 +78,7 @@ export const AnalyticsPage: React.FC = () => {
         <GovCard padding="sm">
           <span className="text-xs text-sage block">Total SOS Calls Received</span>
           <strong className="text-2xl font-mono text-ink-primary block mt-1">
-            {DEMO_EOC_KPI.totalIngestedIncidents}
+            {kpi.totalIncidents ?? 9}
           </strong>
           <span className="text-[11px] text-forest font-medium">98.2% Geocoded</span>
         </GovCard>
@@ -64,7 +86,7 @@ export const AnalyticsPage: React.FC = () => {
         <GovCard padding="sm">
           <span className="text-xs text-sage block">Verified Active Missions</span>
           <strong className="text-2xl font-mono text-ink-primary block mt-1">
-            {DEMO_EOC_KPI.verifiedActiveTasksCount}
+            {kpi.activeIncidents ?? 3}
           </strong>
           <span className="text-[11px] text-amber-dark font-medium">Under ODRAF/OFES Execution</span>
         </GovCard>
@@ -72,15 +94,15 @@ export const AnalyticsPage: React.FC = () => {
         <GovCard padding="sm">
           <span className="text-xs text-sage block">Total Safely Evacuated</span>
           <strong className="text-2xl font-mono text-ink-primary block mt-1">
-            {DEMO_EOC_KPI.totalEvacuatedCitizens.toLocaleString('en-IN')}
+            {kpi.totalEvacuatedCitizens?.toLocaleString('en-IN') ?? '1,480'}
           </strong>
-          <span className="text-[11px] text-forest font-medium">Across 184 Activated Shelters</span>
+          <span className="text-[11px] text-forest font-medium">Across Activated Shelters</span>
         </GovCard>
 
         <GovCard padding="sm">
           <span className="text-xs text-sage block">Average Response Time</span>
           <strong className="text-2xl font-mono text-ink-primary block mt-1">
-            {DEMO_EOC_KPI.averageResponseMinutes} Mins
+            {kpi.averageResponseTimeMinutes ?? 28} Mins
           </strong>
           <span className="text-[11px] text-sage font-medium">From Triage to On-Scene</span>
         </GovCard>
@@ -101,12 +123,12 @@ export const AnalyticsPage: React.FC = () => {
             }
           >
             <div className="space-y-3">
-              {DEMO_HOURLY_TRENDS.map((t) => (
+              {hourlyTrends.map((t) => (
                 <div key={t.hour} className="space-y-1">
                   <div className="flex justify-between text-xs font-mono">
                     <span className="text-ink-primary font-bold">{t.hour} IST</span>
                     <span className="text-sage">
-                      Ingested: <strong className="text-ink-primary">{t.incomingReports}</strong> | Resolved: <strong className="text-forest">{t.resolvedTasks}</strong>
+                      Ingested: <strong className="text-ink-primary">{t.incomingReports}</strong> | Resolved: <strong className="text-forest">{t.resolvedIncidents || (t as any).resolvedTasks || 0}</strong>
                     </span>
                   </div>
                   <div className="w-full bg-bg-subtle h-3 rounded flex overflow-hidden">
@@ -116,7 +138,7 @@ export const AnalyticsPage: React.FC = () => {
                     />
                     <div
                       className="bg-forest h-full"
-                      style={{ width: `${Math.min(100, (t.resolvedTasks / 100) * 100)}%` }}
+                      style={{ width: `${Math.min(100, ((t.resolvedIncidents || (t as any).resolvedTasks || 0) / 100) * 100)}%` }}
                     />
                   </div>
                 </div>
@@ -144,7 +166,7 @@ export const AnalyticsPage: React.FC = () => {
             }
           >
             <div className="space-y-3">
-              {DEMO_HAZARD_BREAKDOWN.map((h) => (
+              {hazardBreakdown.map((h) => (
                 <div key={h.hazardType} className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="font-medium text-ink-primary">{h.hazardType}</span>

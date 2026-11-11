@@ -6,8 +6,9 @@ export interface CycloneShelter {
   name: string;
   districtId: string;
   districtName: string;
-  blockId: string;
+  blockId?: string;
   blockName: string;
+  villageName?: string;
   latitude: number;
   longitude: number;
   totalCapacity: number;
@@ -15,13 +16,18 @@ export interface CycloneShelter {
   availableCapacity: number;
   occupancyRate: number;
   status: ShelterStatus;
-  hasDgSet: boolean;
-  dgFuelHours: number;
-  waterSupplyLitres: number;
-  dryRationsDays: number;
-  medicalKitReady: boolean;
-  contactPerson: string;
-  contactPhone: string;
+  hasDgSet?: boolean;
+  powerBackup?: boolean;
+  dgFuelHours?: number;
+  waterSupplyLitres?: number;
+  waterSupplyDays?: number;
+  dryRationsDays?: number;
+  medicalKitReady?: boolean;
+  medicalAidAvailable?: boolean;
+  contactPerson?: string;
+  contactPhone?: string;
+  caretakerName?: string;
+  caretakerPhone?: string;
   distanceKm?: number;
   lastUpdated: string;
 }

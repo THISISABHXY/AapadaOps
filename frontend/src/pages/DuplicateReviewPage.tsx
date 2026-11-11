@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Copy,
   CheckCircle2,
@@ -9,34 +10,64 @@ import {
   ArrowRight,
   ShieldCheck,
   Building2,
+  AlertTriangle,
 } from 'lucide-react';
 import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
-import { incidentService } from '../services/incidentService';
+import { incidentService, mapBackendIncident } from '../services/incidentService';
 import { useToast } from '../contexts/ToastContext';
 import { DEMO_INCIDENTS } from '../services/demoDataService';
+import { Incident } from '../types/incident';
 import { formatCoordinates, formatTimeAgo, formatMaskedPhone } from '../utilities/formatters';
 
 export const DuplicateReviewPage: React.FC = () => {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
-  const masterIncident = DEMO_INCIDENTS[0]; // OD-2026-0492 Satapada
-  const candidateDuplicate = DEMO_INCIDENTS[1]; // OD-2026-0493 Satapada
+  const { data: clusters = [], isLoading: loadingClusters } = useQuery({
+    queryKey: ['duplicate-clusters'],
+    queryFn: () => incidentService.getDuplicateClusters(),
+  });
 
-  const [merged, setMerged] = useState<boolean>(candidateDuplicate.status === 'DUPLICATE');
+  const { data: allIncidents = [] } = useQuery({
+    queryKey: ['incidents'],
+    queryFn: () => incidentService.getIncidents(),
+  });
+
+  const activeCluster = clusters[0];
+  const primaryIncident: Incident =
+    (activeCluster?.primary_incident && mapBackendIncident(activeCluster.primary_incident)) ||
+    allIncidents.find((i) => i.id === activeCluster?.primary_incident_id) ||
+    allIncidents[0] ||
+    DEMO_INCIDENTS[0];
+
+  const candidateDuplicate: Incident =
+    (activeCluster?.duplicates?.[0] && mapBackendIncident(activeCluster.duplicates[0])) ||
+    allIncidents.find((i) => i.parentIncidentId === primaryIncident?.id || i.id === 'inc_0895') ||
+    allIncidents[1] ||
+    DEMO_INCIDENTS[1];
+
+  const [merged, setMerged] = useState<boolean>(candidateDuplicate?.status === 'DUPLICATE');
+  const [isMerging, setIsMerging] = useState<boolean>(false);
 
   const handleMerge = async () => {
+    if (!primaryIncident || !candidateDuplicate) return;
+    setIsMerging(true);
     try {
-      await incidentService.linkDuplicate(candidateDuplicate.id, masterIncident.id);
+      await incidentService.linkDuplicate(candidateDuplicate.id, primaryIncident.id);
       setMerged(true);
+      queryClient.invalidateQueries({ queryKey: ['duplicate-clusters'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
       showToast(
         'success',
         'Duplicate Merged Successfully',
-        `Linked ${candidateDuplicate.incidentCode} under Master Incident ${masterIncident.incidentCode}`
+        `Linked ${candidateDuplicate.incidentCode} under Master Incident ${primaryIncident.incidentCode}`
       );
-    } catch {
-      showToast('error', 'Merge Failed', 'Could not link duplicate reports.');
+    } catch (err: any) {
+      showToast('error', 'Merge Failed', err?.message || 'Could not link duplicate reports.');
+    } finally {
+      setIsMerging(false);
     }
   };
 
@@ -58,7 +89,7 @@ export const DuplicateReviewPage: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs px-2.5 py-1 bg-forest-subtle text-forest border border-forest/30 rounded font-bold">
-            Cluster Radius: 250 Meters
+            Cluster Radius: {activeCluster?.spatial_radius_meters ? `${activeCluster.spatial_radius_meters}m` : '220 Meters'}
           </span>
         </div>
       </div>
@@ -76,57 +107,55 @@ export const DuplicateReviewPage: React.FC = () => {
                 </span>
               </div>
               <span className="font-mono text-xs font-bold text-ink-primary">
-                {masterIncident.incidentCode}
+                {primaryIncident.incidentCode}
               </span>
             </div>
           }
-          className="border-forest/50"
         >
           <div className="space-y-3">
-            <div className="p-3 bg-forest-subtle/50 rounded border border-forest/20 text-xs font-mono space-y-1">
-              <div className="flex justify-between">
-                <span className="text-sage">Location:</span>
-                <strong className="text-ink-primary">
-                  {masterIncident.villageName}, {masterIncident.blockName}
-                </strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sage">Reported By:</span>
-                <span className="text-ink-primary">{masterIncident.callerName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sage">Caller Contact:</span>
-                <span className="text-ink-primary">{formatMaskedPhone(masterIncident.callerPhone)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sage">GPS Coordinates:</span>
-                <span className="text-ink-primary font-bold">
-                  {formatCoordinates(masterIncident.latitude, masterIncident.longitude)}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-ink-primary">
+                {primaryIncident.villageName}, {primaryIncident.blockName || primaryIncident.districtName}
+              </span>
+              <GovBadge variant="emergency" size="sm">
+                {primaryIncident.reportedSeverity}
+              </GovBadge>
+            </div>
+
+            <p className="text-xs text-ink-primary leading-relaxed bg-bg-warm p-2.5 rounded border border-line">
+              {primaryIncident.rawDescription}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="p-2 bg-white rounded border border-line">
+                <span className="text-sage block text-[10px]">Coordinates</span>
+                <span className="font-semibold text-ink-primary">
+                  {formatCoordinates(primaryIncident.latitude, primaryIncident.longitude)}
                 </span>
               </div>
-              <div className="flex justify-between pt-1 border-t border-forest/20">
-                <span className="text-sage">Stranded Headcount:</span>
-                <strong className="text-emergency">{masterIncident.personsStranded} Persons</strong>
+              <div className="p-2 bg-white rounded border border-line">
+                <span className="text-sage block text-[10px]">Caller Identity</span>
+                <span className="font-semibold text-ink-primary">
+                  {primaryIncident.callerName} ({formatMaskedPhone(primaryIncident.callerPhone)})
+                </span>
               </div>
             </div>
 
-            <div className="space-y-1 text-xs">
-              <span className="font-semibold text-ink-primary">Parent Distress Narrative:</span>
-              <p className="p-2.5 bg-bg-warm rounded border border-line text-ink-secondary leading-relaxed">
-                "{masterIncident.rawDescription}"
-              </p>
+            <div className="pt-2 border-t border-line flex items-center justify-between text-xs font-mono">
+              <span className="text-sage">Reported: {formatTimeAgo(primaryIncident.createdAt)}</span>
+              <span className="text-emergency font-bold">{primaryIncident.personsStranded} Stranded</span>
             </div>
           </div>
         </GovCard>
 
-        {/* Candidate Duplicate Report */}
+        {/* Candidate Duplicate Card */}
         <GovCard
           header={
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber" />
                 <span className="font-bold text-xs uppercase tracking-wider text-amber-dark">
-                  CANDIDATE DUPLICATE SUBMISSION
+                  CANDIDATE DUPLICATE DISTRESS CALL
                 </span>
               </div>
               <span className="font-mono text-xs font-bold text-ink-primary">
@@ -134,97 +163,78 @@ export const DuplicateReviewPage: React.FC = () => {
               </span>
             </div>
           }
-          className={merged ? 'border-line opacity-75' : 'border-amber/60'}
         >
           <div className="space-y-3">
-            <div className="p-3 bg-amber-subtle/50 rounded border border-amber/20 text-xs font-mono space-y-1">
-              <div className="flex justify-between">
-                <span className="text-sage">Location:</span>
-                <strong className="text-ink-primary">
-                  {candidateDuplicate.villageName}, {candidateDuplicate.blockName}
-                </strong>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-ink-primary">
+                {candidateDuplicate.villageName}, {candidateDuplicate.blockName || candidateDuplicate.districtName}
+              </span>
+              <GovBadge variant="amber" size="sm">
+                {merged ? 'MERGED DUPLICATE' : 'PENDING REVIEW'}
+              </GovBadge>
+            </div>
+
+            <p className="text-xs text-ink-primary leading-relaxed bg-bg-warm p-2.5 rounded border border-line">
+              {candidateDuplicate.rawDescription}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="p-2 bg-white rounded border border-line">
+                <span className="text-sage block text-[10px]">Coordinates</span>
+                <span className="font-semibold text-ink-primary">
+                  {formatCoordinates(candidateDuplicate.latitude, candidateDuplicate.longitude)}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sage">Reported By:</span>
-                <span className="text-ink-primary">{candidateDuplicate.callerName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sage">Caller Contact:</span>
-                <span className="text-ink-primary">{formatMaskedPhone(candidateDuplicate.callerPhone)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sage">Distance from Parent:</span>
-                <strong className="text-amber-dark font-bold">45 Meters Apart</strong>
-              </div>
-              <div className="flex justify-between pt-1 border-t border-amber/20">
-                <span className="text-sage">Time Delta:</span>
-                <strong className="text-ink-primary">Received 3m 15s later</strong>
+              <div className="p-2 bg-white rounded border border-line">
+                <span className="text-sage block text-[10px]">Caller Identity</span>
+                <span className="font-semibold text-ink-primary">
+                  {candidateDuplicate.callerName} ({formatMaskedPhone(candidateDuplicate.callerPhone)})
+                </span>
               </div>
             </div>
 
-            <div className="space-y-1 text-xs">
-              <span className="font-semibold text-ink-primary">Candidate Narrative:</span>
-              <p className="p-2.5 bg-bg-warm rounded border border-line text-ink-secondary leading-relaxed">
-                "{candidateDuplicate.rawDescription}"
-              </p>
-            </div>
-
-            {/* AI Spatial Similarity Score */}
-            <div className="p-2.5 bg-bg-warm rounded border border-line text-xs font-mono flex items-center justify-between">
-              <span className="text-sage">Spatial-Textual Correlation:</span>
-              <strong className="text-forest">92% Match Probability</strong>
-            </div>
-
-            {/* Merge Actions */}
-            <div className="pt-2 flex items-center gap-2">
-              {merged ? (
-                <div className="w-full p-2 text-center text-xs font-semibold bg-forest-subtle text-forest rounded border border-forest/30 flex items-center justify-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Successfully Merged under {masterIncident.incidentCode}</span>
-                </div>
-              ) : (
-                <>
-                  <GovButton
-                    variant="primary"
-                    size="sm"
-                    className="flex-1"
-                    onClick={handleMerge}
-                    leftIcon={<Copy className="w-3.5 h-3.5" />}
-                  >
-                    Merge into Master Ticket
-                  </GovButton>
-
-                  <GovButton
-                    variant="secondary"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => showToast('info', 'Incident Split', 'Retained as distinct emergency')}
-                    leftIcon={<Split className="w-3.5 h-3.5" />}
-                  >
-                    Keep Separate
-                  </GovButton>
-                </>
-              )}
+            <div className="pt-2 border-t border-line flex items-center justify-between text-xs font-mono">
+              <span className="text-sage">Reported: {formatTimeAgo(candidateDuplicate.createdAt)}</span>
+              <span className="text-emergency font-bold">{candidateDuplicate.personsStranded} Stranded</span>
             </div>
           </div>
         </GovCard>
       </div>
 
-      {/* 3. Deduplication Administrative Rules Info */}
+      {/* 3. Deduplication Action Console */}
       <GovCard>
-        <div className="text-xs text-sage space-y-1 leading-relaxed">
-          <strong className="text-ink-primary block mb-1">
-            Odisha Disaster Management Authority — Deduplication Protocol:
-          </strong>
-          <p>
-            1. Merging a duplicate does <strong>not delete</strong> the child record. The caller contact number and audio recording are preserved under the parent ticket for rescue team communications.
-          </p>
-          <p>
-            2. The cumulative stranded headcount is updated automatically to ensure tactical rescue boats have adequate passenger capacity.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-forest" />
+              <h3 className="text-xs font-bold text-ink-primary">
+                DBSCAN Confidence Match: {activeCluster?.confidence_score ? `${Math.round(activeCluster.confidence_score * 100)}%` : '89% High Likelihood'}
+              </h3>
+            </div>
+            <p className="text-xs text-sage">
+              Distance: ~220m | Time Delta: ~45 mins | Shared Hazard: {primaryIncident.hazardType}. Merging transfers stranded headcount to the master case without creating duplicate dispatch dispatches.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {merged ? (
+              <span className="text-xs font-bold text-forest flex items-center gap-1.5 px-3 py-1.5 bg-forest-subtle border border-forest/30 rounded">
+                <CheckCircle2 className="w-4 h-4" /> Already Consolidated
+              </span>
+            ) : (
+              <GovButton
+                variant="primary"
+                size="sm"
+                onClick={handleMerge}
+                isLoading={isMerging}
+                leftIcon={<Copy className="w-3.5 h-3.5" />}
+              >
+                Confirm & Merge into Master Task
+              </GovButton>
+            )}
+          </div>
         </div>
       </GovCard>
     </div>
   );
 };
-

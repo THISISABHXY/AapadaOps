@@ -25,7 +25,7 @@ export const LoginPage: React.FC = () => {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: 'collector.puri@nic.in',
-      password: 'SecurePassword123',
+      password: 'Password@123',
     },
   });
 
@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      await login(data.email);
+      await login(data.email, data.password);
       showToast('success', 'Authentication Successful', 'Welcome to AapadaOps EOC Command System');
       navigate('/dashboard');
     } catch (err) {
@@ -43,10 +43,14 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickDemo = (role: UserRole) => {
-    switchDemoRole(role);
-    showToast('info', 'Demo Session Initialized', `Signed in as ${role.replace('_', ' ')}`);
-    navigate('/dashboard');
+  const handleQuickDemo = async (role: UserRole) => {
+    try {
+      await switchDemoRole(role);
+      showToast('info', 'Session Authenticated', `Signed in as ${role.replace('_', ' ')}`);
+      navigate('/dashboard');
+    } catch (err: any) {
+      showToast('error', 'Login Failed', err?.message || 'Could not authenticate persona.');
+    }
   };
 
   return (

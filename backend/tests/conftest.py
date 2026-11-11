@@ -22,8 +22,9 @@ from app.main import app
 from app.models.user import User, UserRole
 from app.db.init_db import seed_database
 
-# Test SQLite database
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_suite.db"
+# Test SQLite database (pre-seeded from aapadaops_dev.db)
+db_path = backend_dir / "test_suite.db"
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{db_path.as_posix()}"
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
@@ -39,28 +40,12 @@ TestSessionLocal = async_sessionmaker(
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create session-scoped event loop."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_database():
-    """Create clean schema and seed reference data once for test session."""
+    """Ensure database connection and schema are ready."""
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-
-    async with TestSessionLocal() as session:
-        await seed_database(session)
-
     yield
-
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
     await test_engine.dispose()
 
 

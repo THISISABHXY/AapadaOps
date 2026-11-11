@@ -126,6 +126,7 @@ async def dispatch_task(
     return task
 
 
+@router.patch("/{task_id}", response_model=TaskResponse)
 @router.patch("/{task_id}/status", response_model=TaskResponse)
 async def update_task_status(
     task_id: str,

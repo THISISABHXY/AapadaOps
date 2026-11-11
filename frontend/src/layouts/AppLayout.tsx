@@ -21,11 +21,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { useRealtimeNotifications } from '../hooks/useRealtimeNotifications';
 import { UserRole } from '../types/user';
 
 export const AppLayout: React.FC = () => {
   const { user, logout, switchDemoRole } = useAuth();
   const { isDemoMode, toggleDemoMode } = useDemoMode();
+  useRealtimeNotifications('incidents');
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);

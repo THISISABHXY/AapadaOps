@@ -100,3 +100,4 @@ class CoordinationPlan(BaseModel):
 
     def __repr__(self) -> str:
         return f"<CoordinationPlan {self.plan_code}: {self.strategy_name} ({self.status})>"
+

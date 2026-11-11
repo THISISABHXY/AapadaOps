@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_password_hash
 from app.models.alert import AlertBroadcast, AlertHazard, AlertSeverity
 from app.models.district import Block, District
+from app.models.duplicate import DuplicateCluster, ClusterStatus
 from app.models.incident import (
     Incident,
     IncidentCategory,
@@ -16,6 +17,7 @@ from app.models.incident import (
 )
 from app.models.resource import Resource, ResourceStatus, ResourceType
 from app.models.shelter import CycloneShelter, ShelterStatus
+from app.models.task import Task, TaskStatus
 from app.models.team import ResponseTeam, TeamStatus
 from app.models.user import User, UserRole
 
@@ -100,6 +102,25 @@ async def seed_database(db: AsyncSession):
                 is_active=True,
             ),
             User(
+                email="director@osdma.gov.in",
+                hashed_password=default_pwd,
+                full_name="Sri Pradeep Kumar Jena, IAS",
+                role=UserRole.SUPER_ADMIN,
+                phone_number="+91 94370 11111",
+                badge_number="OSDMA-DG-01",
+                is_active=True,
+            ),
+            User(
+                email="collector.puri@nic.in",
+                hashed_password=default_pwd,
+                full_name="Dr. Siddharth Shankar Das, IAS",
+                role=UserRole.DISTRICT_COLLECTOR,
+                jurisdiction_district="Puri",
+                phone_number="+91 94370 11223",
+                badge_number="IAS-PURI-01",
+                is_active=True,
+            ),
+            User(
                 email="collector.kendrapara@aapadaops.odisha.gov.in",
                 hashed_password=default_pwd,
                 full_name="Amrit Ruturaj, IAS (Collector)",
@@ -107,6 +128,16 @@ async def seed_database(db: AsyncSession):
                 phone_number="+91 94370 54321",
                 jurisdiction_district="Kendrapara",
                 badge_number="IAS-OD-2016",
+                is_active=True,
+            ),
+            User(
+                email="tahasildar.krushnaprasad@nic.in",
+                hashed_password=default_pwd,
+                full_name="Smt. Ananya Mishra, OAS",
+                role=UserRole.INCIDENT_VERIFICATION_OFFICER,
+                jurisdiction_district="Puri",
+                phone_number="+91 94370 22334",
+                badge_number="OAS-PURI-03",
                 is_active=True,
             ),
             User(
@@ -120,6 +151,16 @@ async def seed_database(db: AsyncSession):
                 is_active=True,
             ),
             User(
+                email="bdo.kakatpur@nic.in",
+                hashed_password=default_pwd,
+                full_name="Sri Rajesh Mohanty, OAS",
+                role=UserRole.RESPONSE_COORDINATOR,
+                jurisdiction_district="Puri",
+                phone_number="+91 94370 33445",
+                badge_number="BDO-KAK-02",
+                is_active=True,
+            ),
+            User(
                 email="response.coordinator@aapadaops.odisha.gov.in",
                 hashed_password=default_pwd,
                 full_name="Commander Bikram Keshari Ray",
@@ -127,6 +168,16 @@ async def seed_database(db: AsyncSession):
                 phone_number="+91 94372 11223",
                 jurisdiction_district="Khordha",
                 badge_number="EOC-RC-04",
+                is_active=True,
+            ),
+            User(
+                email="odraf.unit03@odisha.gov.in",
+                hashed_password=default_pwd,
+                full_name="Inspector B. K. Nayak",
+                role=UserRole.FIELD_WORKER,
+                jurisdiction_district="Puri",
+                phone_number="+91 94370 44556",
+                badge_number="ODRAF-BN3-01",
                 is_active=True,
             ),
             User(
@@ -140,12 +191,29 @@ async def seed_database(db: AsyncSession):
                 is_active=True,
             ),
             User(
+                email="ndma.liaison@nic.in",
+                hashed_password=default_pwd,
+                full_name="Col. R. S. Rathore",
+                role=UserRole.OBSERVER,
+                phone_number="+91 98110 55667",
+                badge_number="NDMA-LN-01",
+                is_active=True,
+            ),
+            User(
                 email="observer@aapadaops.odisha.gov.in",
                 hashed_password=default_pwd,
                 full_name="UNDP Disaster Risk Analyst",
                 role=UserRole.OBSERVER,
                 phone_number="+91 98110 55667",
                 badge_number="OBS-EXT-02",
+                is_active=True,
+            ),
+            User(
+                email="citizen@aapadaops.gov.in",
+                hashed_password=default_pwd,
+                full_name="Public Citizen Reporter",
+                role=UserRole.CITIZEN_REPORTER,
+                phone_number="+91 94379 99999",
                 is_active=True,
             ),
         ]
@@ -367,7 +435,242 @@ async def seed_database(db: AsyncSession):
             casualties_reported=0,
             stranded_count=0,
         )
-        db.add_all([inc1, inc2])
+        inc3 = Incident(
+            incident_code="INC-OD-2026-0893",
+            title="Sea Water Inundation in Krushnaprasad Island Sector",
+            description="High tidal surge caused 4 feet waterlogging in 3 hamlets. 45 persons including elderly and children stranded on temple roof without food or potable water.",
+            category=IncidentCategory.FLOOD,
+            reported_severity=IncidentSeverity.CRITICAL,
+            status=IncidentStatus.SUBMITTED,
+            district_name="Puri",
+            block_name="Krushnaprasad",
+            village_name="Satapada",
+            latitude=19.6730,
+            longitude=85.4320,
+            reporter_name="Debabrata Jena (Gram Sathi)",
+            reporter_phone="+91 94370 22119",
+            reporter_role="CITIZEN",
+            is_verified=False,
+            ai_confidence_score=0.91,
+            ai_raw_classification="AI Advisory: Rapid inundation with isolated island population. Immediate rescue boat required.",
+            ai_urgency_score=0.95,
+            estimated_affected_people=180,
+            casualties_reported=0,
+            stranded_count=45,
+        )
+        inc4 = Incident(
+            incident_code="INC-OD-2026-0894",
+            title="Hospital Emergency Power Failure at Puri DHH",
+            description="Substation feeder tripped during squall; primary generator fuel contaminated. ICU and neonatal wing require immediate mobile diesel generator backup.",
+            category=IncidentCategory.INFRASTRUCTURE_DAMAGE,
+            reported_severity=IncidentSeverity.CRITICAL,
+            status=IncidentStatus.NEEDS_VERIFICATION,
+            district_name="Puri",
+            block_name="Puri Sadar",
+            village_name="Puri Town",
+            latitude=19.8130,
+            longitude=85.8280,
+            reporter_name="Medical Officer on Duty",
+            reporter_phone="+91 94370 44332",
+            reporter_role="OFFICIAL",
+            is_verified=False,
+            ai_confidence_score=0.97,
+            ai_raw_classification="AI Advisory: Critical healthcare lifeline at risk. Urgent 125kVA Genset dispatch.",
+            ai_urgency_score=0.98,
+            estimated_affected_people=60,
+            casualties_reported=0,
+            stranded_count=0,
+        )
+        inc5 = Incident(
+            incident_code="INC-OD-2026-0895",
+            title="Saline Bundh Washout near Rajnagar Dangamal Primary School",
+            description="Flood water entering school premises where 60 villagers took informal shelter. Water rising to 3.5 feet. Need immediate boats.",
+            category=IncidentCategory.EMBANKMENT_BREACH,
+            reported_severity=IncidentSeverity.CRITICAL,
+            status=IncidentStatus.NEEDS_VERIFICATION,
+            district_name="Kendrapara",
+            block_name="Rajnagar",
+            village_name="Dangamal",
+            latitude=20.7395,
+            longitude=86.8435,
+            reporter_name="Ward Member K. Behera",
+            reporter_phone="+91 94371 66778",
+            reporter_role="CITIZEN",
+            is_verified=False,
+            ai_confidence_score=0.93,
+            ai_raw_classification="AI Advisory: Potential duplicate of INC-OD-2026-0891 (220m distance, same hazard).",
+            ai_urgency_score=0.93,
+            estimated_affected_people=150,
+            casualties_reported=0,
+            stranded_count=60,
+        )
+        inc6 = Incident(
+            incident_code="INC-OD-2026-0896",
+            title="Mahanadi River Islet Stranded Villagers",
+            description="12 farmers cut off on river sandbar near Athagarh as river discharge increased to 8.5 lakh cusecs from Hirakud reservoir.",
+            category=IncidentCategory.FLOOD,
+            reported_severity=IncidentSeverity.HIGH,
+            verified_priority=IncidentSeverity.HIGH,
+            status=IncidentStatus.ASSIGNED,
+            district_name="Cuttack",
+            block_name="Athagarh",
+            village_name="Bhattarika",
+            latitude=20.5280,
+            longitude=85.3400,
+            reporter_name="Tahasildar Athagarh",
+            reporter_phone="+91 94373 55667",
+            reporter_role="OFFICIAL",
+            is_verified=True,
+            ai_confidence_score=0.89,
+            ai_raw_classification="AI Advisory: Rapid current; motorized rescue craft dispatched.",
+            ai_urgency_score=0.86,
+            estimated_affected_people=12,
+            casualties_reported=0,
+            stranded_count=12,
+        )
+        inc7 = Incident(
+            incident_code="INC-OD-2026-0897",
+            title="Deep Sea Trawler Engine Breakdown off Dhamra Mouth",
+            description="Mechanized fishing trawler 'Maa Mangala' with 14 crew members disabled 6 nautical miles off Dhamra port. Drift towards sandbars.",
+            category=IncidentCategory.CYCLONE,
+            reported_severity=IncidentSeverity.CRITICAL,
+            verified_priority=IncidentSeverity.CRITICAL,
+            status=IncidentStatus.IN_PROGRESS,
+            district_name="Bhadrak",
+            block_name="Chandbali",
+            village_name="Dhamra",
+            latitude=20.7950,
+            longitude=87.0100,
+            reporter_name="Coastal Marine Police Dhamra",
+            reporter_phone="+91 94374 11998",
+            reporter_role="OFFICIAL",
+            is_verified=True,
+            ai_confidence_score=0.95,
+            ai_raw_classification="AI Advisory: Marine rescue operation active. Coast Guard / Marine Police coordinated.",
+            ai_urgency_score=0.94,
+            estimated_affected_people=14,
+            casualties_reported=0,
+            stranded_count=14,
+        )
+        inc8 = Incident(
+            incident_code="INC-OD-2026-0898",
+            title="Urban Waterlogging at Remuna Golei Road",
+            description="Temporary water accumulation of 1.5 feet drained using municipal dewatering pumps.",
+            category=IncidentCategory.WATERLOGGING,
+            reported_severity=IncidentSeverity.MEDIUM,
+            verified_priority=IncidentSeverity.MEDIUM,
+            status=IncidentStatus.RESOLVED,
+            district_name="Balasore",
+            block_name="Remuna",
+            village_name="Remuna",
+            latitude=21.5120,
+            longitude=86.8740,
+            reporter_name="Municipal Sanitary Officer",
+            reporter_phone="+91 94375 22331",
+            reporter_role="OFFICIAL",
+            is_verified=True,
+            ai_confidence_score=0.82,
+            ai_urgency_score=0.45,
+            estimated_affected_people=50,
+            casualties_reported=0,
+            stranded_count=0,
+        )
+        inc9 = Incident(
+            incident_code="INC-OD-2026-0899",
+            title="Culvert Scour and Sandbagging at Chatrapur",
+            description="Sandbag barrier constructed along rural road culvert. Water receded and traffic restored.",
+            category=IncidentCategory.FLOOD,
+            reported_severity=IncidentSeverity.LOW,
+            verified_priority=IncidentSeverity.LOW,
+            status=IncidentStatus.CLOSED,
+            district_name="Ganjam",
+            block_name="Chatrapur",
+            village_name="Chatrapur",
+            latitude=19.3550,
+            longitude=85.0120,
+            reporter_name="Junior Engineer RD Dept",
+            reporter_phone="+91 94376 33442",
+            reporter_role="OFFICIAL",
+            is_verified=True,
+            ai_confidence_score=0.80,
+            ai_urgency_score=0.30,
+            estimated_affected_people=20,
+            casualties_reported=0,
+            stranded_count=0,
+        )
+        db.add_all([inc1, inc2, inc3, inc4, inc5, inc6, inc7, inc8, inc9])
+        await db.flush()
+
+        # Seed Duplicate Cluster for inc5 -> inc1
+        dup_cluster = DuplicateCluster(
+            primary_incident_id=inc1.id,
+            status=ClusterStatus.PENDING_REVIEW,
+            spatial_radius_meters=220.0,
+            confidence_score=0.89,
+            cluster_summary="2 reports submitted within 220m in Rajnagar regarding Brahmani River breach and flooded school.",
+            duplicate_count=1,
+        )
+        db.add(dup_cluster)
+        await db.flush()
+
+        inc5.is_duplicate = True
+        inc5.duplicate_of_id = inc1.id
+        inc5.duplicate_cluster_id = dup_cluster.id
+
+        # Seed Tactical Tasks
+        # Find NDRF and ODRAF teams for task assignments
+        ndrf_res = await db.execute(select(ResponseTeam).where(ResponseTeam.code == "NDRF-03-A"))
+        ndrf_team = ndrf_res.scalar_one_or_none()
+
+        odraf_res = await db.execute(select(ResponseTeam).where(ResponseTeam.code == "ODRAF-04-B"))
+        odraf_team = odraf_res.scalar_one_or_none()
+
+        now_utc = datetime.now(timezone.utc)
+        task1 = Task(
+            task_code="OD-TSK-401",
+            incident_id=inc6.id,
+            assigned_team_id=odraf_team.id if odraf_team else None,
+            title="Deploy Motorized Inflatable Rescue Boats to evacuate 12 stranded on Bhattarika islet",
+            description="Mahanadi flood surge. Rapid water flow requires high-power outboard motors. Evacuate to elevated temple compound.",
+            priority="HIGH",
+            sla_hours=3,
+            deadline=now_utc + timedelta(hours=3),
+            status=TaskStatus.ASSIGNED,
+            target_village="Bhattarika",
+            target_latitude=20.5280,
+            target_longitude=85.3400,
+            dispatch_notes="Dispatched from 4th ODRAF Unit Cuttack via NH-55.",
+        )
+        task2 = Task(
+            task_code="OD-TSK-402",
+            incident_id=inc7.id,
+            assigned_team_id=ndrf_team.id if ndrf_team else None,
+            title="Marine Search & Rescue for disabled trawler Maa Mangala off Dhamra",
+            description="Tow vessel and 14 crew safely to Dhamra port jetty before swell exceeds 3.5 meters.",
+            priority="CRITICAL",
+            sla_hours=2,
+            deadline=now_utc + timedelta(hours=2),
+            status=TaskStatus.IN_PROGRESS,
+            target_village="Dhamra Port",
+            target_latitude=20.7950,
+            target_longitude=87.0100,
+            dispatch_notes="Team deployed in rigid hull inflatable boat with Marine Police interceptor.",
+        )
+        task3 = Task(
+            task_code="OD-TSK-403",
+            incident_id=inc8.id,
+            title="Install and operate 500 GPM dewatering pump at Remuna Golei",
+            description="Drain stormwater to prevent highway inundation.",
+            priority="MEDIUM",
+            sla_hours=4,
+            status=TaskStatus.COMPLETED,
+            target_village="Remuna",
+            target_latitude=21.5120,
+            target_longitude=86.8740,
+            resolution_notes="Water cleared completely. Traffic flow normalized.",
+            completed_at=now_utc - timedelta(hours=4),
+        )
+        db.add_all([task1, task2, task3])
 
     await db.commit()
     logger.info("Database seeding successfully completed.")

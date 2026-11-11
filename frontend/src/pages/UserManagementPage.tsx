@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
   UserPlus,
@@ -14,6 +15,8 @@ import { GovButton } from '../components/ui/GovButton';
 import { GovModal } from '../components/ui/GovModal';
 import { useToast } from '../contexts/ToastContext';
 import { User, UserRole } from '../types/user';
+import { apiClient } from '../services/apiClient';
+import { normalizeRole, toBackendRole } from '../contexts/AuthContext';
 
 const INITIAL_USERS: User[] = [
   {
@@ -82,7 +85,33 @@ const INITIAL_USERS: User[] = [
 
 export const UserManagementPage: React.FC = () => {
   const { showToast } = useToast();
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const queryClient = useQueryClient();
+
+  const { data: users = INITIAL_USERS, isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      try {
+        const raw = await apiClient.get<any[]>('/users');
+        if (Array.isArray(raw) && raw.length > 0) {
+          return raw.map((u: any) => ({
+            id: u.id,
+            email: u.email,
+            fullName: u.full_name || u.fullName,
+            role: normalizeRole(u.role),
+            districtName: u.jurisdiction_district || u.districtName || 'Puri',
+            phone: u.phone_number || u.phone,
+            department: u.badge_number || 'OSDMA Operations',
+            isActive: Boolean(u.is_active ?? true),
+            createdAt: u.created_at || '2026-01-01T00:00:00Z',
+          }));
+        }
+      } catch (err) {
+        console.warn('Backend users fetch failed, using fallback:', err);
+      }
+      return INITIAL_USERS;
+    },
+  });
+
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -100,23 +129,26 @@ export const UserManagementPage: React.FC = () => {
     return matchesRole && matchesSearch;
   });
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newEmail || !newName) return;
-    const newUser: User = {
-      id: 'usr_' + Math.random().toString(36).substring(2, 7),
-      email: newEmail,
-      fullName: newName,
-      role: newRole,
-      department: 'District Emergency Operations',
-      districtName: 'Puri',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-    setUsers((prev) => [...prev, newUser]);
-    showToast('success', 'User Provisioned', `Added ${newName} (${newRole}) to administrative roster.`);
-    setAddModalOpen(false);
-    setNewEmail('');
-    setNewName('');
+    try {
+      await apiClient.post('/users', {
+        email: newEmail.trim().toLowerCase(),
+        password: 'Password@123',
+        full_name: newName,
+        role: toBackendRole(newRole),
+        phone_number: '+91 94370 00000',
+        jurisdiction_district: 'Puri',
+        badge_number: `OSDMA-${newRole.substring(0, 3)}-${Math.floor(10 + Math.random() * 90)}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      showToast('success', 'User Provisioned', `Added ${newName} (${newRole}) to administrative roster.`);
+      setAddModalOpen(false);
+      setNewEmail('');
+      setNewName('');
+    } catch (err: any) {
+      showToast('error', 'Registration Failed', err?.message || 'Could not create user.');
+    }
   };
 
   return (

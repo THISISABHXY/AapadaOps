@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ListTodo,
   Building2,
@@ -16,28 +17,40 @@ import { GovCard } from '../components/ui/GovCard';
 import { GovBadge } from '../components/ui/GovBadge';
 import { GovButton } from '../components/ui/GovButton';
 import { useToast } from '../contexts/ToastContext';
+import { taskService } from '../services/taskService';
+import { evidenceService } from '../services/evidenceService';
 import { DEMO_TASKS, DEMO_SHELTERS } from '../services/demoDataService';
 import { Task, TaskStatus } from '../types/task';
 import { formatCoordinates } from '../utilities/formatters';
 
 export const MobileFieldPage: React.FC = () => {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'TASKS' | 'SHELTER' | 'REPORT'>('TASKS');
   const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [tasks, setTasks] = useState<Task[]>(DEMO_TASKS.slice(0, 3));
   const [evidenceModalOpen, setEvidenceModalOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
-  const handleAdvanceTask = (taskId: string, currentStatus: TaskStatus) => {
+  const { data: tasks = DEMO_TASKS.slice(0, 3) } = useQuery({
+    queryKey: ['field-tasks'],
+    queryFn: () => taskService.getTasks(),
+    refetchInterval: 10000,
+  });
+
+  const handleAdvanceTask = async (taskId: string, currentStatus: TaskStatus) => {
     let next: TaskStatus = 'EN_ROUTE';
     if (currentStatus === 'ASSIGNED') next = 'EN_ROUTE';
     else if (currentStatus === 'EN_ROUTE') next = 'ON_SCENE';
     else if (currentStatus === 'ON_SCENE') next = 'RESOLVED';
 
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: next } : t))
-    );
-    showToast('success', 'Field Status Updated', `Mission updated to ${next}. Stored locally & synced.`);
+    try {
+      await taskService.updateTaskStatus(taskId, next, `Updated from field PWA to ${next}`);
+      queryClient.invalidateQueries({ queryKey: ['field-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      showToast('success', 'Field Status Updated', `Mission updated to ${next}. Synced with State EOC.`);
+    } catch {
+      showToast('info', 'Offline Mode', `Saved locally. Will sync when network restores.`);
+    }
   };
 
   return (

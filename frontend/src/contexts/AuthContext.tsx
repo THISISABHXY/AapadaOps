@@ -1,91 +1,39 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from '../types/user';
+import { apiClient } from '../services/apiClient';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, role?: UserRole) => Promise<void>;
+  login: (email: string, password?: string, role?: UserRole) => Promise<void>;
   logout: () => void;
-  switchDemoRole: (role: UserRole) => void;
+  switchDemoRole: (role: UserRole) => Promise<void>;
 }
 
-const DEMO_PERSONAS: Record<UserRole, User> = {
-  SUPER_ADMIN: {
-    id: 'usr_001',
-    email: 'director@osdma.gov.in',
-    fullName: 'Sri Pradeep Kumar Jena, IAS',
-    role: 'SUPER_ADMIN',
-    department: 'OSDMA State Command',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  DISTRICT_ADMIN: {
-    id: 'usr_002',
-    email: 'collector.puri@nic.in',
-    fullName: 'Dr. Siddharth Shankar Das, IAS',
-    role: 'DISTRICT_ADMIN',
-    districtId: 'dst_puri',
-    districtName: 'Puri',
-    department: 'District Disaster Management Authority',
-    phone: '+919437011223',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  VERIFICATION_OFFICER: {
-    id: 'usr_003',
-    email: 'tahasildar.krushnaprasad@nic.in',
-    fullName: 'Smt. Ananya Mishra, OAS',
-    role: 'VERIFICATION_OFFICER',
-    districtId: 'dst_puri',
-    districtName: 'Puri',
-    department: 'Revenue & Disaster Management Dept',
-    phone: '+919437022334',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  RESPONSE_COORDINATOR: {
-    id: 'usr_004',
-    email: 'bdo.kakatpur@nic.in',
-    fullName: 'Sri Rajesh Mohanty, OAS',
-    role: 'RESPONSE_COORDINATOR',
-    districtId: 'dst_puri',
-    districtName: 'Puri',
-    department: 'Panchayati Raj & Emergency Ops',
-    phone: '+919437033445',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  FIELD_WORKER: {
-    id: 'usr_005',
-    email: 'odraf.unit03@odisha.gov.in',
-    fullName: 'Inspector B. K. Nayak',
-    role: 'FIELD_WORKER',
-    districtId: 'dst_puri',
-    districtName: 'Puri',
-    department: 'ODRAF 3rd Battalion',
-    phone: '+919437044556',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  OBSERVER: {
-    id: 'usr_006',
-    email: 'ndma.liaison@nic.in',
-    fullName: 'Col. R. S. Rathore',
-    role: 'OBSERVER',
-    department: 'National Disaster Management Authority',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  CITIZEN: {
-    id: 'usr_007',
-    email: 'citizen@aapadaops.gov.in',
-    fullName: 'Public Citizen Reporter',
-    role: 'CITIZEN',
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
+export function normalizeRole(role: string): UserRole {
+  if (role === 'DISTRICT_COLLECTOR') return 'DISTRICT_ADMIN';
+  if (role === 'INCIDENT_VERIFICATION_OFFICER') return 'VERIFICATION_OFFICER';
+  if (role === 'CITIZEN_REPORTER') return 'CITIZEN';
+  return (role as UserRole) || 'OBSERVER';
+}
+
+export function toBackendRole(role: UserRole): string {
+  if (role === 'DISTRICT_ADMIN') return 'DISTRICT_COLLECTOR';
+  if (role === 'VERIFICATION_OFFICER') return 'INCIDENT_VERIFICATION_OFFICER';
+  if (role === 'CITIZEN') return 'CITIZEN_REPORTER';
+  return role;
+}
+
+export const PERSONA_CREDENTIALS: Record<UserRole, { email: string; defaultPassword: string }> = {
+  SUPER_ADMIN: { email: 'director@osdma.gov.in', defaultPassword: 'Password@123' },
+  DISTRICT_ADMIN: { email: 'collector.puri@nic.in', defaultPassword: 'Password@123' },
+  VERIFICATION_OFFICER: { email: 'tahasildar.krushnaprasad@nic.in', defaultPassword: 'Password@123' },
+  RESPONSE_COORDINATOR: { email: 'bdo.kakatpur@nic.in', defaultPassword: 'Password@123' },
+  FIELD_WORKER: { email: 'odraf.unit03@odisha.gov.in', defaultPassword: 'Password@123' },
+  OBSERVER: { email: 'ndma.liaison@nic.in', defaultPassword: 'Password@123' },
+  CITIZEN: { email: 'citizen@aapadaops.gov.in', defaultPassword: 'Password@123' },
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,43 +43,139 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Sync / verify user session with backend
   useEffect(() => {
-    // Check saved session
-    const savedToken = localStorage.getItem('aapadaops_token');
-    const savedUserJson = localStorage.getItem('aapadaops_user');
-    if (savedToken && savedUserJson) {
-      try {
-        setUser(JSON.parse(savedUserJson));
-        setToken(savedToken);
-      } catch {
-        localStorage.removeItem('aapadaops_token');
-        localStorage.removeItem('aapadaops_user');
+    const initSession = async () => {
+      const savedToken = localStorage.getItem('aapadaops_token');
+      const savedUserJson = localStorage.getItem('aapadaops_user');
+
+      if (savedToken) {
+        try {
+          // Attempt verifying with backend /auth/me
+          const profile = await apiClient.get<any>('/auth/me');
+          if (profile && profile.id) {
+            const mappedUser: User = {
+              id: profile.id,
+              email: profile.email,
+              fullName: profile.full_name || profile.fullName,
+              role: normalizeRole(profile.role),
+              department: profile.department || 'OSDMA Operations',
+              districtName: profile.jurisdiction_district || profile.districtName,
+              phone: profile.phone_number || profile.phone,
+              isActive: profile.is_active ?? true,
+              createdAt: profile.created_at || new Date().toISOString(),
+            };
+            setUser(mappedUser);
+            setToken(savedToken);
+            localStorage.setItem('aapadaops_user', JSON.stringify(mappedUser));
+            setIsLoading(false);
+            return;
+          }
+        } catch {
+          // If offline or token expired but saved user exists, fallback gracefully
+          if (savedUserJson) {
+            try {
+              setUser(JSON.parse(savedUserJson));
+              setToken(savedToken);
+              setIsLoading(false);
+              return;
+            } catch {
+              // Ignore parse error
+            }
+          }
+        }
       }
-    } else {
-      // Default to District Administrator demo session for rapid prototyping
-      const defaultUser = DEMO_PERSONAS.DISTRICT_ADMIN;
-      setUser(defaultUser);
-      setToken('demo_jwt_token_district_admin');
-      localStorage.setItem('aapadaops_token', 'demo_jwt_token_district_admin');
-      localStorage.setItem('aapadaops_user', JSON.stringify(defaultUser));
-    }
-    setIsLoading(false);
+
+      // Initial onboarding fallback: District Admin persona
+      try {
+        const creds = PERSONA_CREDENTIALS.DISTRICT_ADMIN;
+        const res = await apiClient.post<any>('/auth/login', {
+          email: creds.email,
+          password: creds.defaultPassword,
+        });
+        const mappedUser: User = {
+          id: res.user.id,
+          email: res.user.email,
+          fullName: res.user.full_name,
+          role: normalizeRole(res.user.role),
+          districtName: res.user.jurisdiction_district,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        };
+        setUser(mappedUser);
+        setToken(res.access_token);
+        localStorage.setItem('aapadaops_token', res.access_token);
+        localStorage.setItem('aapadaops_user', JSON.stringify(mappedUser));
+      } catch {
+        // If backend is booting, set initial state
+        const fallback = {
+          id: 'usr_002',
+          email: 'collector.puri@nic.in',
+          fullName: 'Dr. Siddharth Shankar Das, IAS',
+          role: 'DISTRICT_ADMIN' as UserRole,
+          districtName: 'Puri',
+          department: 'District Disaster Management Authority',
+          phone: '+919437011223',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        };
+        setUser(fallback);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initSession();
+
+    // Listen for auth expiration events
+    const handleAuthExpired = () => {
+      logout();
+    };
+    window.addEventListener('aapadaops:auth_expired', handleAuthExpired);
+    return () => window.removeEventListener('aapadaops:auth_expired', handleAuthExpired);
   }, []);
 
-  const login = useCallback(async (email: string, role: UserRole = 'DISTRICT_ADMIN') => {
+  const login = useCallback(async (email: string, password = 'Password@123', role: UserRole = 'DISTRICT_ADMIN') => {
     setIsLoading(true);
-    // Find matching persona or synthesize
-    const persona = Object.values(DEMO_PERSONAS).find((p) => p.email.toLowerCase() === email.toLowerCase()) || {
-      ...DEMO_PERSONAS[role],
-      email,
-      fullName: email.split('@')[0].toUpperCase(),
-    };
-    const demoToken = 'jwt_' + Math.random().toString(36).substring(2);
-    setUser(persona);
-    setToken(demoToken);
-    localStorage.setItem('aapadaops_token', demoToken);
-    localStorage.setItem('aapadaops_user', JSON.stringify(persona));
-    setIsLoading(false);
+    try {
+      const response = await apiClient.post<any>('/auth/login', {
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      const loggedUser: User = {
+        id: response.user.id,
+        email: response.user.email,
+        fullName: response.user.full_name,
+        role: normalizeRole(response.user.role),
+        districtName: response.user.jurisdiction_district,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      setUser(loggedUser);
+      setToken(response.access_token);
+      localStorage.setItem('aapadaops_token', response.access_token);
+      localStorage.setItem('aapadaops_user', JSON.stringify(loggedUser));
+    } catch (err) {
+      // In demo mode fallback
+      const creds = PERSONA_CREDENTIALS[role];
+      const fallbackUser: User = {
+        id: 'usr_' + Math.random().toString(36).substring(2, 6),
+        email,
+        fullName: email.split('@')[0].toUpperCase(),
+        role,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      setUser(fallbackUser);
+      setToken('demo_token');
+      localStorage.setItem('aapadaops_token', 'demo_token');
+      localStorage.setItem('aapadaops_user', JSON.stringify(fallbackUser));
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -141,14 +185,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('aapadaops_user');
   }, []);
 
-  const switchDemoRole = useCallback((role: UserRole) => {
-    const persona = DEMO_PERSONAS[role];
-    if (persona) {
-      setUser(persona);
-      const demoToken = 'demo_jwt_' + role.toLowerCase();
-      setToken(demoToken);
-      localStorage.setItem('aapadaops_token', demoToken);
-      localStorage.setItem('aapadaops_user', JSON.stringify(persona));
+  const switchDemoRole = useCallback(async (role: UserRole) => {
+    setIsLoading(true);
+    const creds = PERSONA_CREDENTIALS[role];
+    try {
+      const res = await apiClient.post<any>('/auth/login', {
+        email: creds.email,
+        password: creds.defaultPassword,
+      });
+      const switchedUser: User = {
+        id: res.user.id,
+        email: res.user.email,
+        fullName: res.user.full_name,
+        role: normalizeRole(res.user.role),
+        districtName: res.user.jurisdiction_district,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      setUser(switchedUser);
+      setToken(res.access_token);
+      localStorage.setItem('aapadaops_token', res.access_token);
+      localStorage.setItem('aapadaops_user', JSON.stringify(switchedUser));
+    } catch {
+      // Offline fallback
+      const fallbackUser: User = {
+        id: 'usr_' + role.toLowerCase(),
+        email: creds.email,
+        fullName: creds.email.split('@')[0].replace('.', ' ').toUpperCase(),
+        role,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      setUser(fallbackUser);
+      setToken('demo_token_' + role.toLowerCase());
+      localStorage.setItem('aapadaops_token', 'demo_token_' + role.toLowerCase());
+      localStorage.setItem('aapadaops_user', JSON.stringify(fallbackUser));
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -176,4 +249,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
