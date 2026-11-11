@@ -100,3 +100,4 @@ npm run dev
 - **Zero Hardcoded Secrets**: All credentials loaded strictly via environment variables.
 - **Role-Based Access Control**: Strict access boundaries across SuperAdmin, State EOC, District Collector, Block Officer, and Field Responder roles.
 - **Audit Logging**: Every operational dispatch, status change, and resource movement is recorded with immutable timestamps and operator identity.
+

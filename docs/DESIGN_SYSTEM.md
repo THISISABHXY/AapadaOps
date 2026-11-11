@@ -83,3 +83,4 @@ Conforms precisely to standard IMD / NDMA / OSDMA four-stage early warning syste
 - Standard rectangular fields with 1px border (`border-slate-300`).
 - Focus state: Clear 2px outline in deep green/slate (`focus:ring-2 focus:ring-emeraldgov-700/20 focus:border-emeraldgov-700`).
 - Prominent required indicator and clear helper text.
+

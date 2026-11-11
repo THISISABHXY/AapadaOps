@@ -118,3 +118,4 @@
 | `BLOCK_DEVELOPMENT_OFFICER` | Block-wide | GP level monitoring, relief camp logistics, field team assignment |
 | `FIELD_RESPONDER` | Assigned Sector | Incident status updates, SOS verification, GPS check-in, shelter headcount |
 | `CITIZEN` | Public | Submit SOS incident, view public warnings, locate nearest safe shelter |
+

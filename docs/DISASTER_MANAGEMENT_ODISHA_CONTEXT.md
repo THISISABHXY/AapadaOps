@@ -74,3 +74,4 @@ Odisha has an 480-kilometer coastline along the Bay of Bengal and is historicall
 - **ODRAF (Odisha Disaster Rapid Action Force)**: Specialized state force trained for swift-water rescue, collapsed structure search and rescue (CSSR), and high-wind clearance.
 - **NDRF 3rd Battalion (Mundali, Cuttack)**: Federal tactical response prepositioned across coastal belts during severe weather alerts.
 - **Odisha Fire & Emergency Services (OFES)**: 335+ fire stations with inflatable motorized rescue boats (BAUTs), tower lights, and deep-well pumps.
+

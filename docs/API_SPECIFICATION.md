@@ -152,3 +152,4 @@ All responses follow standard HTTP status conventions and return JSON. Authentic
 
 ### `GET /analytics/eoc-summary`
 - **Description**: Real-time aggregated KPI metrics for executive overview dashboard.
+
