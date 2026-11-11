@@ -275,3 +275,4 @@ To deliver a genuinely functional, robust, and tested platform within the projec
 - **Live IMD / CWC Radar API Ingestion**: Direct government API tokens require institutional MOUs; will use high-fidelity historical/synthetic cyclone track feeds based on actual Cyclone Fani/Dana trajectories.
 - **Automated Drone Imagery Computer Vision**: Heavy deep learning processing of high-resolution aerial footage deferred to post-MVP roadmap.
 - **Civilian Voluntary Blood Donor Matching**: Non-critical feature deferred to post-disaster recovery phase.
+
