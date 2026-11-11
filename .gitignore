@@ -75,6 +75,10 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Local tools & portable runtimes
+.tools/
+
+
 # Logs
 logs/
 *.log

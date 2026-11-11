@@ -340,3 +340,4 @@
 - **Loading States**: Low-bandwidth compact loader.
 - **Error States**: Offline banner: *"Network unavailable. 2 actions saved to local storage. Will sync automatically when connected."*
 - **Interaction**: Advancing task status opens photo capture modal; confirmation stores action locally before attempting network sync.
+
