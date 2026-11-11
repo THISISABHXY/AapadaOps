@@ -31,3 +31,4 @@ class DistrictResponse(BaseModel):
 
 class DistrictDetailResponse(DistrictResponse):
     blocks: List[BlockResponse] = []
+

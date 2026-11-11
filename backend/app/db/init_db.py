@@ -371,3 +371,4 @@ async def seed_database(db: AsyncSession):
 
     await db.commit()
     logger.info("Database seeding successfully completed.")
+

@@ -94,3 +94,4 @@ class IncidentListResponse(BaseModel):
     page: int
     page_size: int
     items: List[IncidentResponse]
+

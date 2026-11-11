@@ -355,3 +355,4 @@ async def transition_incident_status(
     )
 
     return incident
+

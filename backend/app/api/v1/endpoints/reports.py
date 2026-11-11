@@ -59,3 +59,4 @@ async def get_incident_reports(incident_id: str, db: AsyncSession = Depends(get_
         .order_by(IncidentReport.created_at.desc())
     )
     return result.scalars().all()
+

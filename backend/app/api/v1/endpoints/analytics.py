@@ -152,3 +152,4 @@ async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
         district_readiness=district_readiness,
         category_distribution=category_distribution,
     )
+

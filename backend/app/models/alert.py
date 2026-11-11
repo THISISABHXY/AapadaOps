@@ -48,3 +48,4 @@ class AlertBroadcast(BaseModel):
 
     def __repr__(self) -> str:
         return f"<AlertBroadcast {self.alert_code}: {self.headline} ({self.severity})>"
+

@@ -72,3 +72,4 @@ async def test_rbac_observer_restricted(client: AsyncClient, auth_tokens: dict):
         },
     )
     assert response.status_code == 403
+

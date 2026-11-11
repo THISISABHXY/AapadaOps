@@ -118,3 +118,4 @@ async def update_team(
     await db.commit()
     await db.refresh(team)
     return team
+

@@ -127,3 +127,4 @@ class Incident(BaseModel):
 
     def __repr__(self) -> str:
         return f"<Incident {self.incident_code}: {self.title} ({self.status})>"
+

@@ -109,3 +109,4 @@ async def update_shelter(
     await db.commit()
     await db.refresh(shelter)
     return shelter
+

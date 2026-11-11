@@ -76,3 +76,4 @@ async def test_task_dispatch_and_completion(client: AsyncClient, auth_tokens: di
     assert comp_res.status_code == 200
     assert comp_res.json()["status"] == "COMPLETED"
     assert comp_res.json()["completed_at"] is not None
+

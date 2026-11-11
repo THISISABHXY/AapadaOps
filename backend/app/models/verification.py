@@ -35,3 +35,4 @@ class VerificationLog(BaseModel):
 
     def __repr__(self) -> str:
         return f"<VerificationLog for {self.incident_id} by {self.officer_id}>"
+

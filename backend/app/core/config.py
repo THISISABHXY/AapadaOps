@@ -83,6 +83,12 @@ class Settings(BaseSettings):
         "CWC_API_BASE_URL", "https://ffs.india-water.gov.in/api"
     )
 
+    # AI / LLM Configuration
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    AI_CONFIDENCE_THRESHOLD: float = 0.70
+    AI_LOW_CONFIDENCE_FLAG: float = 0.65
+
     @property
     def is_production(self) -> bool:
         return self.APP_ENV.lower() == "production"

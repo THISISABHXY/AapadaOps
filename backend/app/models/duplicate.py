@@ -35,3 +35,4 @@ class DuplicateCluster(BaseModel):
 
     def __repr__(self) -> str:
         return f"<DuplicateCluster for {self.primary_incident_id} ({self.status})>"
+

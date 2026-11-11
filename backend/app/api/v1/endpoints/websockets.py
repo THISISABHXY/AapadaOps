@@ -24,3 +24,4 @@ async def websocket_channel_endpoint(websocket: WebSocket, channel: str):
     except Exception as exc:
         logger.warning(f"WebSocket error on channel '{channel}': {exc}")
         ws_manager.disconnect(websocket, channel)
+

@@ -124,3 +124,4 @@ async def dismiss_cluster(
     cluster.status = ClusterStatus.DISMISSED
     await db.commit()
     return {"message": f"Cluster {cluster_id} dismissed. Incidents kept distinct."}
+

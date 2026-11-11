@@ -35,3 +35,4 @@ async def log_audit_event(
     # Flushes so the audit entry is attached to the current transaction
     await db.flush()
     return audit_entry
+

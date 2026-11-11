@@ -42,3 +42,4 @@ class CycloneShelter(BaseModel):
 
     def __repr__(self) -> str:
         return f"<CycloneShelter {self.name} ({self.current_occupancy}/{self.capacity})>"
+

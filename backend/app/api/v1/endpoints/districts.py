@@ -31,3 +31,4 @@ async def get_district_details(district_id: str, db: AsyncSession = Depends(get_
     if not district:
         raise NotFoundError("District", district_id)
     return district
+

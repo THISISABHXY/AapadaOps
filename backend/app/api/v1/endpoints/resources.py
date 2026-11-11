@@ -118,3 +118,4 @@ async def update_resource(
     await db.commit()
     await db.refresh(resource)
     return resource
+

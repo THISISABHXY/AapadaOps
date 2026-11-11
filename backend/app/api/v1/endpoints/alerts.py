@@ -89,3 +89,4 @@ async def create_alert(
     )
 
     return alert
+

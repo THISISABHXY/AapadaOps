@@ -37,3 +37,4 @@ class ResponseTeam(BaseModel):
 
     def __repr__(self) -> str:
         return f"<ResponseTeam {self.code}: {self.name} ({self.status})>"
+

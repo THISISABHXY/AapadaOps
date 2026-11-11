@@ -67,3 +67,4 @@ class Task(BaseModel):
 
     def __repr__(self) -> str:
         return f"<Task {self.task_code}: {self.title} ({self.status})>"
+

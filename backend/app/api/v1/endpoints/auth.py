@@ -121,3 +121,4 @@ async def register_user(user_in: UserCreate, db: AsyncSession = Depends(get_db))
     await db.commit()
     await db.refresh(new_user)
     return new_user
+

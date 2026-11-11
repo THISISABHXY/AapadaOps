@@ -46,3 +46,4 @@ async def test_evidence_file_upload(client: AsyncClient):
     assert data["file_name"] == "damage_photo.png"
     assert data["mime_type"] == "image/png"
     assert len(data["sha256_hash"]) == 64
+

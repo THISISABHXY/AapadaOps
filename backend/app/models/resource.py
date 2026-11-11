@@ -57,3 +57,4 @@ class Resource(BaseModel):
 
     def __repr__(self) -> str:
         return f"<Resource {self.code}: {self.name} ({self.status})>"
+

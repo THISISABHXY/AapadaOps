@@ -38,3 +38,4 @@ async def list_audit_logs(
     query = query.order_by(AuditLog.created_at.desc()).offset(pagination.skip).limit(pagination.limit)
     result = await db.execute(query)
     return result.scalars().all()
+

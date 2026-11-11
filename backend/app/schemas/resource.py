@@ -192,3 +192,4 @@ class ShelterResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+

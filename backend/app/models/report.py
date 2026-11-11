@@ -46,3 +46,4 @@ class IncidentReport(BaseModel):
 
     def __repr__(self) -> str:
         return f"<IncidentReport {self.id} for {self.incident_id}>"
+

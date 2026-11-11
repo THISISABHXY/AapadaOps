@@ -21,3 +21,4 @@ class AuditLog(BaseModel):
 
     def __repr__(self) -> str:
         return f"<AuditLog {self.action} on {self.entity_type}:{self.entity_id}>"
+
