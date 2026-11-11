@@ -55,3 +55,4 @@ export function useGeolocation() {
 
   return { ...state, getPosition };
 }
+

@@ -44,3 +44,4 @@ export const verifyIncidentSchema = z.object({
 });
 
 export type VerifyIncidentFormData = z.infer<typeof verifyIncidentSchema>;
+

@@ -85,3 +85,4 @@ export interface IncidentCluster {
   radiusMeters: number;
   createdTimeSpanMinutes: number;
 }
+

@@ -288,3 +288,4 @@ export const IncidentMapPage: React.FC = () => {
     </div>
   );
 };
+

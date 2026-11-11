@@ -25,3 +25,4 @@ export interface CycloneShelter {
   distanceKm?: number;
   lastUpdated: string;
 }
+

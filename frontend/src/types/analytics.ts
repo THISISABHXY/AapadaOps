@@ -35,3 +35,4 @@ export interface DistrictReadinessMetrics {
   availablePumps: number;
   alertTier: 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED';
 }
+

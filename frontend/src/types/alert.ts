@@ -22,3 +22,4 @@ export interface DisasterAlert {
   createdAt: string;
   isActive: boolean;
 }
+

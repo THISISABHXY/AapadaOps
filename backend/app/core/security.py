@@ -1,29 +1,32 @@
-"""AapadaOps Security, Password Hashing, and JWT Authentication."""
+"""AapadaOps Security, Direct Bcrypt Password Hashing, and JWT Authentication."""
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Union
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# Password hashing context (bcrypt)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify raw password against hashed representation."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify raw password against bcrypt hashed representation."""
+    try:
+        pwd_bytes = plain_password.encode("utf-8")[:72]
+        return bcrypt.checkpw(pwd_bytes, hashed_password.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    """Hash raw password with bcrypt salt."""
-    return pwd_context.hash(password)
+    """Hash raw password with native bcrypt salt (max 72 bytes)."""
+    pwd_bytes = password.encode("utf-8")[:72]
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def create_access_token(
     subject: Union[str, Any],
-    role: str = "FIELD_RESPONDER",
+    role: str = "FIELD_WORKER",
     district: Optional[str] = None,
     expires_delta: Optional[timedelta] = None,
 ) -> str:
@@ -39,18 +42,29 @@ def create_access_token(
         "sub": str(subject),
         "role": role,
         "district": district,
+        "type": "access",
         "exp": expire,
         "iat": datetime.now(timezone.utc),
         "iss": "AapadaOps-Auth",
     }
-    encoded_jwt = jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
-    )
-    return encoded_jwt
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def decode_access_token(token: str) -> Optional[dict]:
-    """Decode and validate JWT access token."""
+def create_refresh_token(subject: Union[str, Any]) -> str:
+    """Generate long-lived refresh token for token renewal."""
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode = {
+        "sub": str(subject),
+        "type": "refresh",
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "iss": "AapadaOps-Auth",
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_token(token: str) -> Optional[dict]:
+    """Decode and validate JWT access or refresh token."""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -59,3 +73,6 @@ def decode_access_token(token: str) -> Optional[dict]:
     except JWTError:
         return None
 
+
+# Backward-compatible alias
+decode_access_token = decode_token

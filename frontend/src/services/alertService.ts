@@ -38,3 +38,4 @@ export const alertService = {
     return apiClient.post<DisasterAlert>('/alerts', data);
   },
 };
+

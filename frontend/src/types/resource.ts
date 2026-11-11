@@ -22,3 +22,4 @@ export interface TacticalResource {
   conditionRating: 'EXCELLENT' | 'GOOD' | 'NEEDS_SERVICE';
   lastInspected: string;
 }
+

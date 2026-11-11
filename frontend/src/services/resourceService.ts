@@ -15,3 +15,4 @@ export const resourceService = {
     return apiClient.get<TacticalResource[]>(`/resources${query}`);
   },
 };
+
