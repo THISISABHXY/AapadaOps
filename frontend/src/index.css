@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-warm: #F6F5F0;
+    --color-primary-ink: #202B32;
+    --color-forest-green: #365B4A;
+    --color-sage: #71877C;
+    --color-amber: #D7A65B;
+    --color-emergency-red: #B64C45;
+    --color-border: #E7E8E3;
+    --color-white: #FFFFFF;
+  }
+
+  body {
+    background-color: #F6F5F0;
+    color: #202B32;
+    font-family: 'Source Sans 3', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Monospace tabular figures for all data tables & numbers */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F6F5F0;
+}
+::-webkit-scrollbar-thumb {
+  background: #D5D7CF;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #71877C;
+}
+
+/* Leaflet container fixes */
+.leaflet-container {
+  font-family: inherit;
+  background-color: #EFEFEA;
+}

@@ -626,3 +626,4 @@ To ensure systematic, testable progress:
 6. **Step 6 (Citizen Portal, Testing & Verification)**:
    - Bilingual mobile-first SOS form with GPS auto-detection.
    - End-to-end integration test suite and SitRep generation verification.
+
