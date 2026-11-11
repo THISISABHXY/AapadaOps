@@ -346,3 +346,4 @@ async def test_ai_benchmark_evaluation_suite():
 
     assert report.safety_compliance["prohibit_autonomous_dispatch"] is True
     assert report.safety_compliance["prohibit_automatic_merge"] is True
+

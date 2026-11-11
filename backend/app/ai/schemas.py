@@ -244,3 +244,4 @@ class SystemAIEvaluationReport(BaseModel):
     platform_name: str = "AapadaOps Disaster Intelligence Engine"
     benchmarks: List[EvaluationMetricSummary]
     safety_compliance: Dict[str, bool]
+

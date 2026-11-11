@@ -268,3 +268,4 @@ class RAGKnowledgeAssistant:
 
 
 rag_assistant = RAGKnowledgeAssistant()
+

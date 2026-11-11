@@ -19,6 +19,7 @@ from app.models.task import Task, TaskStatus
 from app.models.shelter import CycloneShelter, ShelterStatus
 from app.models.audit import AuditLog
 from app.models.alert import AlertBroadcast, AlertSeverity, AlertHazard
+from app.models.coordination import CoordinationPlan, CoordinationStatus
 
 __all__ = [
     "BaseModel",
@@ -50,5 +51,7 @@ __all__ = [
     "AlertBroadcast",
     "AlertSeverity",
     "AlertHazard",
+    "CoordinationPlan",
+    "CoordinationStatus",
 ]
 

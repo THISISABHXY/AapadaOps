@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     analytics,
     audit_logs,
     auth,
+    coordination,
     districts,
     duplicates,
     evidence,
@@ -35,6 +36,7 @@ api_router.include_router(verification.router)
 api_router.include_router(resources.router)
 api_router.include_router(teams.router)
 api_router.include_router(tasks.router)
+api_router.include_router(coordination.router)
 api_router.include_router(shelters.router)
 api_router.include_router(alerts.router)
 api_router.include_router(analytics.router)
