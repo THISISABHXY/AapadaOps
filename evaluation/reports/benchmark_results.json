@@ -1,0 +1,60 @@
+{
+  "benchmark_timestamp": "2026-11-12T07:48:19Z",
+  "total_test_incidents": 160,
+  "information_extraction": {
+    "total_evaluated": 148,
+    "category_accuracy_pct": 60.81,
+    "district_accuracy_pct": 94.59,
+    "stranded_count_mae_persons": 3.11,
+    "medical_urgency_f1_pct": 54.9,
+    "zero_hallucination_rate_pct": 100.0,
+    "latency_ms": {
+      "min": 0.22,
+      "p50": 0.76,
+      "p95": 1.58,
+      "p99": 2.05,
+      "max": 5.55,
+      "mean": 0.84
+    }
+  },
+  "duplicate_detection": {
+    "total_evaluated_pairs": 50,
+    "precision_pct": 100.0,
+    "recall_pct": 100.0,
+    "f1_score_pct": 100.0,
+    "accuracy_pct": 100.0,
+    "avg_latency_ms": 0.51
+  },
+  "explainable_prioritization": {
+    "total_evaluated": 100,
+    "exact_agreement_pct": 14.0,
+    "adjacent_tier_agreement_pct": 88.0,
+    "explainability_compliance_pct": 100.0,
+    "avg_latency_ms": 0.05
+  },
+  "stale_report_detection": {
+    "accuracy_pct": 100.0,
+    "flagged_stale_reports": 6
+  },
+  "resource_optimization_mip": {
+    "runs": 20,
+    "feasibility_rate_pct": 100.0,
+    "constraint_satisfaction_pct": 100.0,
+    "mean_solve_latency_ms": 36.81
+  },
+  "safety_and_failure_cases": {
+    "out_of_bounds_intercepted_pct": 100.0,
+    "low_quality_audio_flagged_pct": 100.0,
+    "conflicting_reports_flagged": 6,
+    "zero_hallucination_on_missing_fields": true,
+    "autonomous_dispatch_blocked": true,
+    "double_allocation_prevention_tested": true
+  },
+  "manual_vs_ai_comparison": {
+    "manual_intake_seconds": 240.0,
+    "ai_assisted_seconds": 0.0009,
+    "throughput_speedup_factor": 271430.1,
+    "double_allocation_risk_manual": "High",
+    "double_allocation_risk_ai": "Zero (Locked)"
+  }
+}

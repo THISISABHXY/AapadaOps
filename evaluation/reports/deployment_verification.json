@@ -1,0 +1,61 @@
+{
+  "1_frontend_loads": {
+    "status": "PASSED",
+    "code": 200,
+    "bytes": 1271
+  },
+  "2_security_headers": {
+    "status": "PASSED",
+    "x_content_type_options": "nosniff",
+    "x_frame_options": "DENY",
+    "strict_transport_security": "max-age=31536000; includeSubDomains"
+  },
+  "3_health_check": {
+    "status": "PASSED",
+    "liveness": {
+      "status": "LIVE",
+      "timestamp": "2026-11-12T08:09:49.132875+00:00"
+    },
+    "readiness": {
+      "status": "READY",
+      "database": "healthy",
+      "environment": "development",
+      "version": "1.0.0",
+      "timestamp": "2026-11-12T08:09:49.141156+00:00"
+    }
+  },
+  "4_database_connection": {
+    "status": "PASSED",
+    "db_status": "healthy"
+  },
+  "5_login_and_auth": {
+    "status": "PASSED",
+    "token_type": "Bearer",
+    "expires_in_minutes": 60
+  },
+  "6_incident_persistence": {
+    "status": "PASSED",
+    "incident_id": "c0985ca7-bc16-42e2-aa46-182bfeb1a66b",
+    "incident_code": "INC-OD-2026-9799",
+    "category": "EMBANKMENT_BREACH"
+  },
+  "7_file_upload": {
+    "status": "PASSED",
+    "file_name": "damage_photo.jpg",
+    "sha256_hash": "a263a7be450da3ed23fa5918bfe40f3428d26222e2d53aff2e560a62c149d246"
+  },
+  "8_ai_integrations": {
+    "status": "PASSED",
+    "detected_language": "or",
+    "suggested_category": "EMBANKMENT_BREACH",
+    "confidence_score": 0.95
+  },
+  "9_websocket_updates": {
+    "status": "PASSED",
+    "note": "WebSocket endpoint operational"
+  },
+  "10_secret_exposure": {
+    "status": "PASSED",
+    "leaks_detected": 0
+  }
+}
