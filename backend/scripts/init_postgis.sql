@@ -16,3 +16,4 @@ DO $$
 BEGIN
     RAISE NOTICE 'PostGIS version: %', PostGIS_Full_Version();
 END $$;
+

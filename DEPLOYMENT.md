@@ -273,3 +273,4 @@ docker compose start backend
 - **Readiness Probe:** `GET /health/ready` (Validates database connection and operational state)
 - **Structured JSON Logging:** Logs output to stdout in standardized format suitable for FluentBit / Promtail / CloudWatch / Vector ingestion.
 - **Log Sanitation:** Sensitive headers (`Authorization: Bearer ...`) and reporter contact details are masked in standard log outputs.
+
