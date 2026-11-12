@@ -28,8 +28,13 @@ import {
   Users,
   Radio,
   CheckCircle2,
+  Key,
+  Globe,
+  Settings2,
+  Check,
 } from 'lucide-react';
 import { GovBadge } from '../components/ui/GovBadge';
+import { GovButton } from '../components/ui/GovButton';
 import { incidentService } from '../services/incidentService';
 import { shelterService } from '../services/shelterService';
 import { taskService } from '../services/taskService';
@@ -59,6 +64,8 @@ const DISTRICT_CENTROIDS: Record<string, DistrictGeoTarget> = {
   Cuttack: { center: [20.4625, 85.8828], zoom: 10 },
   Khordha: { center: [20.1900, 85.6200], zoom: 10 },
 };
+
+export type BasemapProvider = 'OSM' | 'ESRI_TOPO' | 'ESRI_SATELLITE' | 'CARTO';
 
 // ============================================================================
 // Dynamic Leaflet Custom DivIcons (Zero External Image Dependency)
@@ -211,6 +218,17 @@ export const IncidentMapPage: React.FC = () => {
   const [showIncidents, setShowIncidents] = useState<boolean>(true);
   const [activeIncident, setActiveIncident] = useState<Incident | null>(null);
 
+  // Basemap & API Key Configuration State
+  const [baseLayer, setBaseLayer] = useState<BasemapProvider>(() => {
+    return (localStorage.getItem('aapadaops_basemap_provider') as BasemapProvider) || 'OSM';
+  });
+  const [cartoApiKey, setCartoApiKey] = useState<string>(() => {
+    return localStorage.getItem('aapadaops_carto_api_key') || '';
+  });
+  const [tempApiKey, setTempApiKey] = useState<string>(cartoApiKey);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
+  const [keySavedMessage, setKeySavedMessage] = useState<boolean>(false);
+
   // Queries for data layers
   const { data: incidents = [] } = useQuery<Incident[]>({
     queryKey: ['incidents', selectedDistrict],
@@ -242,6 +260,14 @@ export const IncidentMapPage: React.FC = () => {
     }
   }, [incidents, activeIncident]);
 
+  const handleSaveApiKey = (keyToSave: string) => {
+    const trimmed = keyToSave.trim();
+    setCartoApiKey(trimmed);
+    localStorage.setItem('aapadaops_carto_api_key', trimmed);
+    setKeySavedMessage(true);
+    setTimeout(() => setKeySavedMessage(false), 3000);
+  };
+
   return (
     <div className="h-[calc(100vh-6rem)] flex flex-col space-y-2">
       {/* 1. Map Top Layer Controls Bar */}
@@ -270,6 +296,46 @@ export const IncidentMapPage: React.FC = () => {
               ))}
             </select>
           </div>
+
+          <div className="h-4 w-px bg-line hidden sm:block" />
+
+          {/* Basemap Tile Provider Selector */}
+          <div className="flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5 text-sage" />
+            <span className="text-sage font-medium">Basemap:</span>
+            <select
+              value={baseLayer}
+              onChange={(e) => {
+                const val = e.target.value as BasemapProvider;
+                setBaseLayer(val);
+                localStorage.setItem('aapadaops_basemap_provider', val);
+              }}
+              className="bg-bg-warm border border-line rounded px-2 py-1 font-semibold text-ink-primary text-xs cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-forest"
+            >
+              <option value="OSM">🗺️ OpenStreetMap (Free, No Key)</option>
+              <option value="ESRI_TOPO">⛰️ ESRI Topography (Free, No Key)</option>
+              <option value="ESRI_SATELLITE">🛰️ ESRI Satellite (Free, No Key)</option>
+              <option value="CARTO">🧭 CARTO Voyager (with API Key)</option>
+            </select>
+          </div>
+
+          {/* API Key Configuration Button */}
+          <button
+            onClick={() => {
+              setTempApiKey(cartoApiKey);
+              setIsApiKeyModalOpen(true);
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors cursor-pointer ${
+              cartoApiKey
+                ? 'bg-forest-subtle border-forest/30 text-forest hover:bg-forest/10'
+                : 'bg-bg-warm border-line text-ink-primary hover:bg-line'
+            }`}
+            title="Configure Map Tile API Key"
+          >
+            <Key className="w-3.5 h-3.5 text-forest" />
+            <span>{cartoApiKey ? 'API Key Active' : 'Add API Key'}</span>
+            {cartoApiKey && <span className="w-1.5 h-1.5 rounded-full bg-forest animate-pulse" />}
+          </button>
         </div>
 
         {/* Layer Checkboxes */}
@@ -350,12 +416,46 @@ export const IncidentMapPage: React.FC = () => {
           >
             <MapController target={mapTarget} />
 
-            {/* Base Tile Layer (CartoDB Voyager: Clean, calm government cartography) */}
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-              maxZoom={19}
-            />
+            {/* Base Tile Layer Dynamic Selection */}
+            {baseLayer === 'OSM' && (
+              <TileLayer
+                key="osm-tile-layer"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, OSDMA Basemap'
+                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maxZoom={19}
+              />
+            )}
+
+            {baseLayer === 'ESRI_TOPO' && (
+              <TileLayer
+                key="esri-topo-layer"
+                attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, USGS, OSDMA'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={18}
+              />
+            )}
+
+            {baseLayer === 'ESRI_SATELLITE' && (
+              <TileLayer
+                key="esri-sat-layer"
+                attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={19}
+              />
+            )}
+
+            {baseLayer === 'CARTO' && (
+              <TileLayer
+                key={`carto-voyager-${cartoApiKey}`}
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>'
+                url={
+                  cartoApiKey
+                    ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(cartoApiKey)}`
+                    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+                }
+                maxZoom={19}
+              />
+            )}
 
             {/* Inundation Zones (Flood Polygons) */}
             {showFloodZones && (
@@ -598,6 +698,30 @@ export const IncidentMapPage: React.FC = () => {
               ))}
           </MapContainer>
 
+          {/* Alert Banner if CARTO without API key */}
+          {baseLayer === 'CARTO' && !cartoApiKey && (
+            <div className="absolute top-16 left-3 z-[1000] bg-amber-subtle border border-amber/40 text-amber-dark rounded px-3 py-1.5 shadow-md text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber" />
+              <span>CARTO requires an API key. Watermark is visible.</span>
+              <button
+                onClick={() => setIsApiKeyModalOpen(true)}
+                className="underline font-bold hover:text-ink-primary cursor-pointer ml-1"
+              >
+                Add Key
+              </button>
+              <span className="text-sage font-mono">or</span>
+              <button
+                onClick={() => {
+                  setBaseLayer('OSM');
+                  localStorage.setItem('aapadaops_basemap_provider', 'OSM');
+                }}
+                className="bg-white px-2 py-0.5 rounded border border-amber/40 font-semibold hover:bg-bg-warm cursor-pointer"
+              >
+                Switch to OpenStreetMap (Free)
+              </button>
+            </div>
+          )}
+
           {/* Floating IMD Track Bulletin Card (Top Left of Map) */}
           {showCycloneTrack && (
             <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-xs border border-line rounded p-3 max-w-sm shadow-md text-xs space-y-1">
@@ -619,7 +743,9 @@ export const IncidentMapPage: React.FC = () => {
           <div className="absolute bottom-3 left-3 z-[1000] bg-white/95 backdrop-blur-xs border border-line rounded px-3 py-2 shadow-md text-[11px] space-y-1.5 max-w-xs select-none">
             <div className="font-bold text-ink-primary border-b border-line pb-1 flex items-center justify-between">
               <span>Operational GIS Legend</span>
-              <span className="font-mono text-[10px] text-sage">WGS 84 Native</span>
+              <span className="font-mono text-[10px] text-sage">
+                {baseLayer === 'OSM' ? 'OSM Free Native' : baseLayer === 'ESRI_TOPO' ? 'ESRI Topo' : baseLayer === 'ESRI_SATELLITE' ? 'ESRI Sat' : 'CARTO'}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-ink-secondary text-[10px]">
               <div className="flex items-center gap-1.5">
@@ -763,6 +889,197 @@ export const IncidentMapPage: React.FC = () => {
           </aside>
         )}
       </div>
+
+      {/* 3. API Key & Basemap Provider Configuration Modal */}
+      {isApiKeyModalOpen && (
+        <div className="fixed inset-0 z-[2000] bg-ink-primary/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-line shadow-xl max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-forest-subtle text-forest rounded">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-ink-primary">GIS Map & API Key Settings</h3>
+                  <p className="text-[11px] text-sage">Configure your Basemap provider and CARTO API token</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsApiKeyModalOpen(false)}
+                className="p-1 text-sage hover:text-ink-primary rounded cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Provider Quick Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-ink-primary block">Select Active Basemap:</label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  onClick={() => {
+                    setBaseLayer('OSM');
+                    localStorage.setItem('aapadaops_basemap_provider', 'OSM');
+                  }}
+                  className={`p-2.5 rounded border text-left cursor-pointer transition-all ${
+                    baseLayer === 'OSM'
+                      ? 'border-forest bg-forest-subtle/50 ring-1 ring-forest'
+                      : 'border-line hover:border-line-dark'
+                  }`}
+                >
+                  <div className="font-bold text-ink-primary flex items-center justify-between">
+                    <span>OpenStreetMap</span>
+                    {baseLayer === 'OSM' && <Check className="w-3.5 h-3.5 text-forest" />}
+                  </div>
+                  <div className="text-[10px] text-sage mt-0.5">100% Free &bull; No API Key needed</div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setBaseLayer('ESRI_TOPO');
+                    localStorage.setItem('aapadaops_basemap_provider', 'ESRI_TOPO');
+                  }}
+                  className={`p-2.5 rounded border text-left cursor-pointer transition-all ${
+                    baseLayer === 'ESRI_TOPO'
+                      ? 'border-forest bg-forest-subtle/50 ring-1 ring-forest'
+                      : 'border-line hover:border-line-dark'
+                  }`}
+                >
+                  <div className="font-bold text-ink-primary flex items-center justify-between">
+                    <span>ESRI Topo & Rivers</span>
+                    {baseLayer === 'ESRI_TOPO' && <Check className="w-3.5 h-3.5 text-forest" />}
+                  </div>
+                  <div className="text-[10px] text-sage mt-0.5">Topographic &bull; No Key needed</div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setBaseLayer('ESRI_SATELLITE');
+                    localStorage.setItem('aapadaops_basemap_provider', 'ESRI_SATELLITE');
+                  }}
+                  className={`p-2.5 rounded border text-left cursor-pointer transition-all ${
+                    baseLayer === 'ESRI_SATELLITE'
+                      ? 'border-forest bg-forest-subtle/50 ring-1 ring-forest'
+                      : 'border-line hover:border-line-dark'
+                  }`}
+                >
+                  <div className="font-bold text-ink-primary flex items-center justify-between">
+                    <span>ESRI Satellite</span>
+                    {baseLayer === 'ESRI_SATELLITE' && <Check className="w-3.5 h-3.5 text-forest" />}
+                  </div>
+                  <div className="text-[10px] text-sage mt-0.5">Aerial photo &bull; No Key needed</div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setBaseLayer('CARTO');
+                    localStorage.setItem('aapadaops_basemap_provider', 'CARTO');
+                  }}
+                  className={`p-2.5 rounded border text-left cursor-pointer transition-all ${
+                    baseLayer === 'CARTO'
+                      ? 'border-forest bg-forest-subtle/50 ring-1 ring-forest'
+                      : 'border-line hover:border-line-dark'
+                  }`}
+                >
+                  <div className="font-bold text-ink-primary flex items-center justify-between">
+                    <span>CARTO Voyager</span>
+                    {baseLayer === 'CARTO' && <Check className="w-3.5 h-3.5 text-forest" />}
+                  </div>
+                  <div className="text-[10px] text-sage mt-0.5">Requires CARTO API key</div>
+                </button>
+              </div>
+            </div>
+
+            {/* CARTO API Key Field */}
+            <div className="space-y-1.5 pt-2 border-t border-line">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-ink-primary">
+                  CARTO Basemap API Key:
+                </label>
+                <a
+                  href="https://carto.com/basemaps/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-forest hover:underline flex items-center gap-1 font-medium"
+                >
+                  <span>Get Free Key</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  placeholder="Paste your CARTO API key here..."
+                  className="w-full text-xs font-mono px-3 py-2 border border-line rounded bg-bg-warm focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-forest"
+                />
+              </div>
+              <p className="text-[11px] text-sage leading-relaxed">
+                Adding your CARTO API key automatically attaches it to tile requests, removing all watermarks.
+              </p>
+            </div>
+
+            {keySavedMessage && (
+              <div className="p-2 bg-forest-subtle border border-forest/30 text-forest rounded text-xs flex items-center gap-1.5 font-medium">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>API Key saved successfully! Basemap reloaded without watermark.</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-3 border-t border-line">
+              {cartoApiKey ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSaveApiKey('');
+                    setTempApiKey('');
+                  }}
+                  className="text-xs text-emergency hover:underline cursor-pointer"
+                >
+                  Clear Saved Key
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBaseLayer('OSM');
+                    localStorage.setItem('aapadaops_basemap_provider', 'OSM');
+                    setIsApiKeyModalOpen(false);
+                  }}
+                  className="text-xs text-forest hover:underline cursor-pointer font-medium"
+                >
+                  Use Free OpenStreetMap
+                </button>
+              )}
+
+              <div className="flex items-center gap-2">
+                <GovButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsApiKeyModalOpen(false)}
+                >
+                  Close
+                </GovButton>
+                <GovButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    handleSaveApiKey(tempApiKey);
+                    if (tempApiKey.trim()) {
+                      setBaseLayer('CARTO');
+                      localStorage.setItem('aapadaops_basemap_provider', 'CARTO');
+                    }
+                  }}
+                >
+                  Save & Apply
+                </GovButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

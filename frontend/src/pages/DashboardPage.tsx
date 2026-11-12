@@ -205,8 +205,8 @@ export const DashboardPage: React.FC = () => {
                 style={{ height: '100%', width: '100%' }}
               >
                 <TileLayer
-                  attribution='&copy; CARTO'
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, OSDMA'
+                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
                 {/* Flood Inundation Polygon Preview */}
