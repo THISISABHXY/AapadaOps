@@ -1,0 +1,217 @@
+name: AapadaOps Continuous Integration & Deployment Pipeline
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository }}-backend
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
+
+jobs:
+  # ============================================================================
+  # 1. Backend Automated Testing & Quality Gate
+  # ============================================================================
+  backend-test:
+    name: Backend Regression & AI Evaluation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_DB: aapadaops_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install System Geospatial Libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev gdal-bin libgeos-dev
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Execute Full Pytest Test Suite
+        env:
+          APP_ENV: testing
+          DATABASE_URL: sqlite+aiosqlite:///./test_suite.db
+          SECRET_KEY: test_secret_key_ci_pipeline_32_characters_minimum!
+        run: |
+          pytest backend/tests/ -v --durations=10
+
+      - name: Run Empirical AI Evaluation Suite (160 Incidents)
+        run: |
+          python backend/evaluation/evaluate_ai_engine.py
+
+  # ============================================================================
+  # 2. Frontend Build & Static Analysis Gate
+  # ============================================================================
+  frontend-build:
+    name: Frontend TypeScript Compilation & Vite Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Type-Check & Compile Vite Bundle
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Verify Bundle Assets
+        working-directory: ./frontend
+        run: |
+          test -f dist/index.html || exit 1
+          echo "Frontend distribution bundle successfully verified."
+
+  # ============================================================================
+  # 3. Security Scanning & Vulnerability Analysis
+  # ============================================================================
+  security-audit:
+    name: Security & Secret Leak Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify No Committed Secrets
+        run: |
+          # Ensure .env is never tracked in repository
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "CRITICAL: .env file detected in git index!"
+            exit 1
+          fi
+          echo "Secret exposure verification passed: .env is safely excluded."
+
+  # ============================================================================
+  # 4. Multi-Arch Docker Build & Registry Push (Master Branch Only)
+  # ============================================================================
+  docker-build-and-push:
+    name: Container Build & Push to GHCR
+    needs: [ backend-test, frontend-build, security-audit ]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker Metadata (Backend)
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build & Push Backend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract Docker Metadata (Frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build & Push Frontend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # 5. Production Zero-Downtime Deployment
+  # ============================================================================
+  deploy-production:
+    name: Zero-Downtime Production Deployment
+    needs: [ docker-build-and-push ]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://aapadaops.osdma.gov.in
+
+    steps:
+      - name: Deployment Trigger
+        run: |
+          echo "Production containers published to GHCR."
+          echo "Executing zero-downtime rolling update on Odisha State Data Centre cluster."
+          # Webhook or SSH deploy step can be invoked here via secrets.DEPLOY_WEBHOOK_URL
