@@ -24,7 +24,7 @@ export const GovSelect = React.forwardRef<HTMLSelectElement, GovSelectProps>(
           ref={ref}
           id={selectId}
           className={cn(
-            'w-full h-9 px-3 text-sm bg-white border border-line rounded text-ink-primary transition-colors focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest disabled:bg-bg-subtle disabled:cursor-not-allowed',
+            'w-full h-9 px-3 text-sm bg-white border border-line rounded-md text-ink-primary transition-all duration-150 focus:outline-none focus:ring-1 focus:ring-forest focus:border-forest shadow-2xs disabled:bg-bg-subtle disabled:cursor-not-allowed',
             error && 'border-emergency focus:ring-emergency focus:border-emergency',
             className
           )}
