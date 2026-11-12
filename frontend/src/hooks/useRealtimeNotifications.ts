@@ -43,7 +43,7 @@ export function useRealtimeNotifications(channel = 'incidents') {
               showToast('info', 'Task Update', `Tactical mission status updated`);
             } else if (data.event === 'ALERT_BROADCAST') {
               queryClient.invalidateQueries({ queryKey: ['alerts'] });
-              showToast('warning', 'SATARK Early Warning Broadcast', data.headline || 'Emergency Alert Issued');
+              showToast('emergency', 'SATARK Early Warning Broadcast', data.headline || 'Emergency Alert Issued');
             }
           } catch {
             // Non-JSON ping message
@@ -87,3 +87,4 @@ export function useRealtimeNotifications(channel = 'incidents') {
     };
   }, [channel, queryClient, showToast]);
 }
+

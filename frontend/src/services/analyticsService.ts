@@ -19,34 +19,15 @@ export const analyticsService = {
       try {
         const res = await apiClient.get<any>('/analytics/summary');
         if (res?.kpis) {
-          const tot = res.kpis.total_incidents ?? 9;
-          const act = res.kpis.active_incidents ?? 4;
-          const ver = res.kpis.verified_incidents ?? 3;
-          const resCount = res.kpis.resolved_incidents ?? 2;
-          const depUnits = res.kpis.deployed_units ?? 3;
-          const avgResp = res.kpis.average_response_time_minutes ?? 28;
-          const occRate = res.kpis.shelter_occupancy_rate ?? 0.65;
           return {
-            activeDisastersCount: 2,
-            totalIngestedIncidents: tot,
-            totalIncidents: tot,
-            activeIncidents: act,
-            verifiedIncidents: ver,
-            resolvedIncidents: resCount,
-            unverifiedIncidentsCount: Math.max(0, tot - ver),
-            verifiedActiveTasksCount: ver,
-            resolvedTasksCount: resCount,
-            totalEvacuatedCitizens: 1480,
-            operationalSheltersCount: 3,
-            averageShelterOccupancyRate: occRate,
-            shelterOccupancyRate: occRate,
-            deployedTacticalUnitsCount: depUnits,
-            deployedTacticalForces: depUnits,
-            availableTacticalUnitsCount: 5,
-            averageResponseMinutes: avgResp,
-            averageResponseTimeMinutes: avgResp,
+            totalIncidents: res.kpis.total_incidents,
+            activeIncidents: res.kpis.active_incidents,
+            verifiedIncidents: res.kpis.verified_incidents,
+            resolvedIncidents: res.kpis.resolved_incidents,
+            deployedTacticalForces: res.kpis.deployed_units,
+            shelterOccupancyRate: res.kpis.shelter_occupancy_rate,
+            averageResponseTimeMinutes: res.kpis.average_response_time_minutes || 28,
             highRiskDistrictsCount: 4,
-            activeStateAlertTier: 'RED',
           };
         }
       } catch (err) {
@@ -65,13 +46,12 @@ export const analyticsService = {
           return res.velocity.map((v: any) => ({
             hour: v.hour,
             incomingReports: v.incident_count,
-            verifiedTasks: Math.max(0, v.incident_count - 1),
-            resolvedTasks: Math.max(0, Math.floor(v.incident_count / 2)),
+            verifiedIncidents: Math.max(0, v.incident_count - 1),
             resolvedIncidents: Math.max(0, Math.floor(v.incident_count / 2)),
           }));
         }
       } catch (err) {
-        console.warn('Backend hourly trends fetch failed, using demo fallback:', err);
+        console.warn('Backend velocity fetch failed:', err);
       }
     }
     return DEMO_HOURLY_TRENDS;
@@ -104,12 +84,11 @@ export const analyticsService = {
         if (Array.isArray(res?.district_readiness)) {
           return res.district_readiness.map((d: any) => ({
             districtName: d.district_name,
-            activeIncidents: d.active_incidents || 0,
-            openShelters: d.shelter_count || 1,
-            evacueeCount: d.evacuee_count || 450,
-            availableBoats: d.available_boats || 2,
-            availablePumps: d.available_pumps || 3,
-            alertTier: (d.alert_tier || 'YELLOW') as any,
+            readinessScore: d.readiness_score,
+            activeIncidents: d.active_incidents,
+            deployedForces: 2,
+            availableForces: d.available_teams,
+            shelterCapacityUsagePercent: d.shelter_capacity_percent,
           }));
         }
       } catch (err) {

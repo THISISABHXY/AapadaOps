@@ -10,6 +10,7 @@ Tests:
 6. Clean asset release on official human closure
 """
 
+import uuid
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
@@ -165,8 +166,9 @@ async def test_full_response_coordination_lifecycle(db_session):
     AI_RECOMMENDED -> REVIEW -> APPROVE/ASSIGN -> ACKNOWLEDGE -> PROGRESS -> EVIDENCE -> HUMAN_CLOSE
     """
     # 1. Setup Incident and Force records
+    test_uid = uuid.uuid4().hex[:6]
     incident = Incident(
-        incident_code="INC-OD-2026-9001",
+        incident_code=f"INC-OD-2026-{test_uid.upper()}",
         title="Baitarani Breach in Jajpur",
         description="Embankment breached near Dasarathpur.",
         category=IncidentCategory.EMBANKMENT_BREACH,
@@ -181,7 +183,7 @@ async def test_full_response_coordination_lifecycle(db_session):
     db_session.add(incident)
 
     team = ResponseTeam(
-        code="ODRAF-JJP-01",
+        code=f"ODRAF-JJP-{test_uid[:4].upper()}",
         name="ODRAF Unit Dasarathpur",
         organization="ODRAF",
         team_lead_name="Captain Barik",
@@ -197,7 +199,7 @@ async def test_full_response_coordination_lifecycle(db_session):
     db_session.add(team)
 
     resource = Resource(
-        code="ODRN-BOAT-JJP-01",
+        code=f"ODRN-BOAT-JJP-{test_uid[:4].upper()}",
         name="Rescue Boat 25HP",
         category=ResourceType.INFLATABLE_BOAT,
         organization="ODRAF",
@@ -212,7 +214,7 @@ async def test_full_response_coordination_lifecycle(db_session):
     db_session.add(resource)
 
     coordinator = User(
-        email="coord_test@aapadaops.gov.in",
+        email=f"coord_{test_uid}@aapadaops.gov.in",
         hashed_password="hash",
         full_name="Coordination Officer Mohanty",
         role=UserRole.RESPONSE_COORDINATOR,

@@ -13,3 +13,4 @@ for t in ["users", "districts", "incidents", "response_teams", "resources", "cyc
     if t in tables:
         count = cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
         print(f" - {t}: {count} rows")
+

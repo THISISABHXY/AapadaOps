@@ -83,6 +83,7 @@ htmlcov/
 logs/
 *.log
 
-# File uploads
+# File uploads & backups
 backend/app/uploads/
+backend/backups/
 

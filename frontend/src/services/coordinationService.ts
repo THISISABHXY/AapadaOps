@@ -124,3 +124,4 @@ export const coordinationService = {
     return apiClient.get<any[]>(`/coordination/plans${query}`);
   },
 };
+

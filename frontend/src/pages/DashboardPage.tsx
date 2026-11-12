@@ -354,7 +354,7 @@ export const DashboardPage: React.FC = () => {
                 ))}
 
               {feedTab === 'SHELTERS' &&
-                shelters.map((s) => (
+                DEMO_SHELTERS.map((s) => (
                   <div key={s.id} className="p-3 hover:bg-bg-warm transition-colors space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-xs text-ink-primary">{s.name}</span>

@@ -34,6 +34,33 @@ from app.services.spatial_service import is_coordinate_in_odisha
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
 
+AUTHORIZED_PII_ROLES = {
+    UserRole.SUPER_ADMIN,
+    UserRole.DISTRICT_COLLECTOR,
+    UserRole.INCIDENT_VERIFICATION_OFFICER,
+    UserRole.RESPONSE_COORDINATOR,
+    UserRole.FIELD_WORKER,
+}
+
+
+def mask_phone_pii(phone: str) -> str:
+    """Mask citizen reporter phone numbers for DPDP 2023 privacy compliance."""
+    if not phone:
+        return "XXXXX-XXXXX"
+    clean = phone.strip()
+    if len(clean) >= 10:
+        return clean[:-5] + "XXXXX"
+    return clean[:2] + "****" + clean[-2:]
+
+
+def serialize_incident_with_privacy(incident: Incident, current_user: Optional[User]) -> IncidentResponse:
+    """Serialize incident model to response schema, masking sensitive citizen PII for unprivileged viewers."""
+    can_view_pii = current_user is not None and current_user.role in AUTHORIZED_PII_ROLES
+    resp_data = IncidentResponse.model_validate(incident)
+    if not can_view_pii:
+        resp_data.reporter_phone = mask_phone_pii(resp_data.reporter_phone)
+    return resp_data
+
 # Permitted state transitions in the AapadaOps Lifecycle
 VALID_TRANSITIONS = {
     IncidentStatus.SUBMITTED: {
@@ -224,6 +251,7 @@ async def list_incidents(
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
+    current_user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Query incidents with filtering by district, lifecycle status, severity, and full-text keyword."""
@@ -265,22 +293,31 @@ async def list_incidents(
     result = await db.execute(query)
     items = result.scalars().all()
 
+    # Apply PII masking for unauthorized viewers
+    serialized_items = [
+        serialize_incident_with_privacy(item, current_user) for item in items
+    ]
+
     return IncidentListResponse(
         total=total,
         page=page,
         page_size=page_size,
-        items=items,
+        items=serialized_items,
     )
 
 
 @router.get("/{incident_id}", response_model=IncidentResponse)
-async def get_incident(incident_id: str, db: AsyncSession = Depends(get_db)):
-    """Retrieve full operational incident record by ID."""
+async def get_incident(
+    incident_id: str,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve full operational incident record by ID with PII protection."""
     result = await db.execute(select(Incident).where(Incident.id == incident_id))
     incident = result.scalar_one_or_none()
     if not incident:
         raise NotFoundError("Incident", incident_id)
-    return incident
+    return serialize_incident_with_privacy(incident, current_user)
 
 
 @router.patch("/{incident_id}/status", response_model=IncidentResponse)

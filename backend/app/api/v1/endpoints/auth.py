@@ -1,13 +1,14 @@
 """AapadaOps Authentication API Endpoints."""
 
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import ConflictError, UnauthorizedError
+from app.core.rate_limiter import rate_limiter
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -25,8 +26,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(credentials: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Authenticate operational personnel with email and password, returning JWT session tokens."""
+    rate_limiter.check(request, max_requests=10, window_seconds=60)
     result = await db.execute(select(User).where(User.email == credentials.email.lower()))
     user = result.scalar_one_or_none()
 

@@ -36,3 +36,4 @@ export const evidenceService = {
     return `${baseUrl}/evidence/download/${fileId}`;
   },
 };
+

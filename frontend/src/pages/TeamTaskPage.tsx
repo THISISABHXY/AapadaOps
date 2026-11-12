@@ -141,7 +141,7 @@ export const TeamTaskPage: React.FC = () => {
                         </div>
 
                         <div className="pt-2 border-t border-line text-[10px] text-sage flex items-center justify-between font-mono">
-                          <span>SLA: {task.slaHours || 4} Hours</span>
+                          <span>SLA: {task.slaHours} Hours</span>
                           <span>Target: {task.targetVillage}</span>
                         </div>
 
@@ -157,7 +157,7 @@ export const TeamTaskPage: React.FC = () => {
                               Mobilize En Route →
                             </GovButton>
                           )}
-                          {task.status === 'EN_ROUTE' && (
+                          {(task.status === 'EN_ROUTE' || task.status === 'ASSIGNED') && task.status !== 'ON_SCENE' && (
                             <GovButton
                               variant="primary"
                               size="sm"

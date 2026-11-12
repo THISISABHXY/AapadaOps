@@ -2,13 +2,14 @@
 
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
+from app.core.rate_limiter import rate_limiter
 from app.api.v1.deps import get_current_user, get_optional_user
 from app.models.evidence import EvidenceFile
 from app.models.user import User
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/evidence", tags=["Evidence & Media"])
 
 @router.post("/upload", response_model=EvidenceResponse, status_code=status.HTTP_201_CREATED)
 async def upload_evidence(
+    request: Request,
     file: UploadFile = File(...),
     incident_id: Optional[str] = Form(None),
     task_id: Optional[str] = Form(None),
@@ -29,6 +31,7 @@ async def upload_evidence(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload photos, audio voice notes, or documents verifying ground conditions."""
+    rate_limiter.check(request, max_requests=20, window_seconds=60)
     orig_name, storage_path, file_size, sha256 = await file_service.save_file(file)
 
     evidence = EvidenceFile(
