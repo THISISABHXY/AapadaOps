@@ -77,3 +77,4 @@ async def check_shelter_capacities(
         "overcrowded_shelters": overcrowded,
         "status": "COMPLETED",
     }
+

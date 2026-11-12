@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polygon,
+  Polyline,
+} from 'react-leaflet';
+import L from 'leaflet';
+import {
   AlertTriangle,
   Users,
   Building2,
@@ -186,34 +195,100 @@ export const DashboardPage: React.FC = () => {
             padding="none"
           >
             {/* Embedded Visual Situation Preview */}
-            <div className="h-[360px] bg-bg-warm relative overflow-hidden flex flex-col items-center justify-center border-b border-line p-4">
-              {/* Simulated Map Visual Representation */}
-              <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#365B4A_1px,transparent_1px)] [background-size:16px_16px]" />
+            <div className="h-[360px] relative overflow-hidden border-b border-line">
+              <MapContainer
+                center={[20.25, 86.15]}
+                zoom={8}
+                scrollWheelZoom={false}
+                zoomControl={true}
+                className="h-full w-full"
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; CARTO'
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                />
 
-              <div className="z-10 bg-white/95 border border-line rounded p-4 max-w-sm text-center shadow-xs">
-                <div className="w-10 h-10 rounded-full bg-forest-subtle mx-auto flex items-center justify-center text-forest mb-2">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <h4 className="text-sm font-semibold text-ink-primary mb-1">
-                  Active Coastal Threat Zone: Puri & Jagatsinghpur
-                </h4>
-                <p className="text-xs text-sage mb-3 leading-relaxed">
-                  Interactive PostGIS layers ready: Cyclone track buffer, flood plain inundation, and 8 active cluster pins in {selectedDistrict}.
-                </p>
-                <Link to="/map">
-                  <GovButton variant="primary" size="sm" className="w-full">
-                    Launch Interactive GIS Map Console
-                  </GovButton>
-                </Link>
+                {/* Flood Inundation Polygon Preview */}
+                <Polygon
+                  positions={[
+                    [20.5200, 86.3500],
+                    [20.6500, 86.4800],
+                    [20.7800, 86.7200],
+                    [20.7200, 86.8500],
+                    [20.5800, 86.7800],
+                    [20.4800, 86.5200],
+                  ]}
+                  pathOptions={{
+                    color: '#0284C7',
+                    fillColor: '#38BDF8',
+                    fillOpacity: 0.25,
+                    weight: 2,
+                    dashArray: '4, 4',
+                  }}
+                />
+
+                {/* IMD Cyclone Landfall Polyline */}
+                <Polyline
+                  positions={[
+                    [17.60, 87.50],
+                    [18.30, 86.90],
+                    [19.00, 86.40],
+                    [19.40, 85.90],
+                    [19.85, 85.85],
+                    [20.40, 85.75],
+                  ]}
+                  pathOptions={{ color: '#B64C45', weight: 2.5, dashArray: '5, 5' }}
+                />
+
+                {/* Incidents Markers */}
+                {incidents.slice(0, 10).map((inc) => (
+                  <Marker
+                    key={inc.id}
+                    position={[inc.latitude, inc.longitude]}
+                    icon={L.divIcon({
+                      className: 'mini-incident-pin',
+                      html: `
+                        <div class="relative flex items-center justify-center cursor-pointer" style="width: 24px; height: 24px;">
+                          <div class="rounded-full shadow-sm flex items-center justify-center font-bold text-white text-[10px]" 
+                               style="background-color: ${inc.reportedSeverity === 'CRITICAL' ? '#B64C45' : '#D7A65B'}; width: 20px; height: 20px; border: 1.5px solid #FFFFFF;">
+                            !
+                          </div>
+                        </div>
+                      `,
+                      iconSize: [24, 24],
+                      iconAnchor: [12, 12],
+                      popupAnchor: [0, -12],
+                    })}
+                  >
+                    <Popup>
+                      <div className="p-2 text-xs font-sans space-y-1">
+                        <div className="font-mono font-bold text-ink-primary">{inc.incidentCode}</div>
+                        <div className="font-semibold text-emergency">{inc.hazardType}</div>
+                        <div className="text-[11px] text-sage">{inc.villageName || inc.districtName}</div>
+                        <div className="text-[10px] text-ink-secondary">Stranded: {inc.personsStranded}</div>
+                        <Link to="/map" className="block text-[11px] text-forest font-bold hover:underline pt-1">
+                          Open in Full GIS Map &rarr;
+                        </Link>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+
+              {/* Floating Quick Action Overlay */}
+              <div className="absolute top-2 right-2 z-[1000] bg-white/90 backdrop-blur-xs border border-line rounded px-2.5 py-1 text-[11px] font-mono shadow-xs flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emergency animate-pulse" />
+                <span className="font-bold text-ink-primary">Live Cyclone Track Active</span>
               </div>
 
               {/* Mini Map Status Chips */}
-              <div className="absolute bottom-2 left-2 z-10 flex gap-1.5 font-mono text-[10px]">
-                <span className="bg-white/90 px-2 py-0.5 rounded border border-line text-ink-primary">
-                  Center: 19.8135° N, 85.8312° E
+              <div className="absolute bottom-2 left-2 z-[1000] flex gap-1.5 font-mono text-[10px]">
+                <span className="bg-white/95 px-2 py-0.5 rounded border border-line text-ink-primary shadow-xs">
+                  Center: 20.25° N, 86.15° E
                 </span>
-                <span className="bg-white/90 px-2 py-0.5 rounded border border-line text-forest font-semibold">
-                  SRID: 4326 (WGS 84)
+                <span className="bg-white/95 px-2 py-0.5 rounded border border-line text-forest font-semibold shadow-xs">
+                  WGS 84 GPS Native
                 </span>
               </div>
             </div>

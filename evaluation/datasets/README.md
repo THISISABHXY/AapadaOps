@@ -29,3 +29,4 @@ This directory contains the ground-truth annotated benchmark datasets used to em
 - **Districts Represented:** All 30 districts of Odisha (Angul, Balasore, Bargarh, Bhadrak, Balangir, Boudh, Cuttack, Deogarh, Dhenkanal, Gajapati, Ganjam, Jagatsinghpur, Jajpur, Jharsuguda, Kalahandi, Kandhamal, Kendrapara, Keonjhar, Khordha, Koraput, Malkangiri, Mayurbhanj, Nabarangpur, Nayagarh, Nuapada, Puri, Rayagada, Sambalpur, Subarnapur, Sundargarh).
 - **Linguistic Balance:** 100% paired Odia and English text with authentic disaster vocabularies.
 - **Hazard Classes:** Embankment Breach, Cyclone Wind, Flood Inundation, Fallen Tree / Road Block, Medical Emergency, Stranded Persons.
+

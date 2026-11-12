@@ -81,3 +81,4 @@
 3. **Autonomous Dispatch Interlock:** 100% of dispatch actions required valid human coordinator session credentials and signatures.
 4. **DPDP Act 2023 Masking:** Citizen telephone numbers were masked (`+91 94370 XXXXX`) across all unprivileged API outputs.
 5. **Cryptographic Proofs:** All uploaded evidence images verified binary magic bytes and generated SHA-256 integrity hashes.
+

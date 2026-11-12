@@ -1,3 +1,5 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,5 +48,49 @@
 .leaflet-container {
   font-family: inherit;
   background-color: #EFEFEA;
+  z-index: 0;
 }
+
+/* Custom Government Leaflet Popups */
+.leaflet-popup-content-wrapper {
+  background: #FFFFFF !important;
+  color: #202B32 !important;
+  border: 1px solid #E7E8E3 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(32, 43, 50, 0.12) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  background: #FFFFFF !important;
+  border: 1px solid #E7E8E3 !important;
+  box-shadow: none !important;
+}
+
+/* Pulsing Emergency Marker */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.marker-pulse-ring {
+  animation: pulse-ring 2s infinite ease-in-out;
+}
+
 

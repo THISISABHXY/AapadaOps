@@ -125,3 +125,4 @@ AapadaOps utilizes **PostgreSQL 16** with the **PostGIS 3.4** spatial extension.
 - `idx_incidents_status_priority`: B-tree composite index on `(status, priority_score DESC)`.
 - `idx_incidents_district`: B-tree index on `district_name`.
 - `idx_audit_logs_created_at`: B-tree index on `created_at DESC` for fast compliance streaming.
+

@@ -93,3 +93,4 @@ python backend/scripts/backup_restore.py backup --db-url <DATABASE_URL> --out-di
 # Restore snapshot into clean PostgreSQL instance
 python backend/scripts/backup_restore.py restore --snapshot-file /var/backups/aapadaops/snapshot_latest.tar.gz --db-url <DATABASE_URL>
 ```
+

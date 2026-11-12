@@ -67,3 +67,4 @@ Production deployments running behind Nginx enforce defensive HTTP security head
 - Public SOS Intake: 60 requests per minute per IP.
 - Authentication Endpoint (`/api/v1/auth/login`): 30 requests per minute per IP.
 - Enforced via SlowAPI in-memory or Redis-backed token-bucket algorithms.
+

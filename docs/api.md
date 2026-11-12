@@ -49,3 +49,4 @@
 ## 9. Real-Time WebSockets
 - `WS /ws/incidents`: Real-time push updates for new incidents, priority recalculations, and status changes.
 - `WS /ws/coordination`: Live tactical team location updates and plan progression.
+

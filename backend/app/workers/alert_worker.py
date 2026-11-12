@@ -39,3 +39,4 @@ async def process_pending_alerts(db: AsyncSession) -> Dict[str, Any]:
         "expired_alerts_count": expired_count,
         "status": "COMPLETED",
     }
+
