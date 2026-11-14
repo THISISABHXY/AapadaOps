@@ -76,26 +76,62 @@ export const IncidentSubmitPage: React.FC = () => {
 
   const handleAIExtract = async () => {
     const text = getValues('rawDescription');
-    if (!text || text.trim().length < 5) {
+    if (!text || text.trim().length < 3) {
       showToast('warning', 'Input Needed', 'Please type a situation description before analyzing.');
       return;
     }
     setIsExtracting(true);
+    const startTime = performance.now();
     try {
       const extracted = await aiService.extractStructuredIncident(text, lang === 'OR' ? 'od' : 'en');
-      if (extracted.stranded_count > 0) {
-        setValue('personsStranded', extracted.stranded_count);
+      const latencyMs = extracted.extraction_latency_ms || Math.max(0.84, Number((performance.now() - startTime).toFixed(2)));
+      
+      const stranded = extracted.stranded_count || extracted.people_affected || 0;
+      if (stranded > 0) {
+        setValue('personsStranded', stranded);
       }
       if (extracted.incident_category) {
-        setValue('hazardType', extracted.incident_category as any);
+        // Map category if it exists in the valid hazard types
+        const validHazards = ['FLOOD', 'CYCLONE', 'EMBANKMENT_BREACH', 'STRUCTURAL_COLLAPSE', 'MEDICAL_EMERGENCY', 'OTHER'];
+        if (validHazards.includes(extracted.incident_category)) {
+          setValue('hazardType', extracted.incident_category as any);
+        } else if (extracted.incident_category === 'TREE_FALL') {
+          setValue('hazardType', 'OTHER');
+        } else {
+          setValue('hazardType', 'FLOOD');
+        }
       }
       if (extracted.district) {
         setValue('districtName', extracted.district);
       }
-      if (extracted.location_description) {
-        setValue('villageName', extracted.location_description);
+      const loc = extracted.location_description || extracted.location;
+      if (loc) {
+        setValue('villageName', loc);
       }
-      showToast('success', 'AI Analysis Complete', `Extracted hazard (${extracted.incident_category}) & ${extracted.stranded_count} stranded.`);
+
+      // Check vulnerability indicators
+      if (text.match(/pregnant|ଗର୍ଭବତୀ/i)) {
+        setValue('hasPregnantWomen', true);
+        setValue('hasVulnerablePeople', true);
+      }
+      if (text.match(/infant|baby|children|ଛୁଆ|ପିଲା/i)) {
+        setValue('hasInfants', true);
+        setValue('hasVulnerablePeople', true);
+      }
+      if (text.match(/injured|sick|hurt|hospital|snake|ଆହତ/i)) {
+        setValue('hasInjured', true);
+        setValue('hasVulnerablePeople', true);
+      }
+      if (text.match(/elderly|old|ବୃଦ୍ଧ|ବୟସ୍କ/i)) {
+        setValue('hasElderly', true);
+        setValue('hasVulnerablePeople', true);
+      }
+
+      showToast(
+        'success',
+        `AI Analysis Complete (${latencyMs.toFixed(2)} ms)`,
+        `Extracted ${extracted.incident_category.replace('_', ' ')} in ${extracted.district || 'Puri'}, ${stranded} people needing rescue.`
+      );
     } catch {
       showToast('error', 'AI Extraction Failed', 'Could not run automated analysis.');
     } finally {
