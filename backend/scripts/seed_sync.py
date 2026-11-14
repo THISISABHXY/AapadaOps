@@ -43,32 +43,31 @@ if cur.fetchone()[0] == 0:
     print("Districts seeded.")
 
 # 2. Seed Users / Personas
-cur.execute("SELECT COUNT(*) FROM users")
-if cur.fetchone()[0] == 0:
-    print("Seeding personas...")
-    users = [
-        ("admin@aapadaops.odisha.gov.in", "Dr. Manojit Jena (SRC/OSDMA)", "SUPER_ADMIN", "+91 94370 12345", None, "OSDMA-SA-01"),
-        ("director@osdma.gov.in", "Sri Pradeep Kumar Jena, IAS", "SUPER_ADMIN", "+91 94370 11111", None, "OSDMA-DG-01"),
-        ("collector.puri@nic.in", "Dr. Siddharth Shankar Das, IAS", "DISTRICT_COLLECTOR", "+91 94370 11223", "Puri", "IAS-PURI-01"),
-        ("collector.kendrapara@aapadaops.odisha.gov.in", "Amrit Ruturaj, IAS (Collector)", "DISTRICT_COLLECTOR", "+91 94370 54321", "Kendrapara", "IAS-OD-2016"),
-        ("tahasildar.krushnaprasad@nic.in", "Smt. Ananya Mishra, OAS", "INCIDENT_VERIFICATION_OFFICER", "+91 94370 22334", "Puri", "OAS-PURI-03"),
-        ("verification.officer@aapadaops.odisha.gov.in", "Subhashree Mohanty, OAS", "INCIDENT_VERIFICATION_OFFICER", "+91 94371 99887", "Kendrapara", "OAS-IVO-08"),
-        ("bdo.kakatpur@nic.in", "Sri Rajesh Mohanty, OAS", "RESPONSE_COORDINATOR", "+91 94370 33445", "Puri", "BDO-KAK-02"),
-        ("response.coordinator@aapadaops.odisha.gov.in", "Commander Bikram Keshari Ray", "RESPONSE_COORDINATOR", "+91 94372 11223", "Khordha", "EOC-RC-04"),
-        ("odraf.unit03@odisha.gov.in", "Inspector B. K. Nayak", "FIELD_WORKER", "+91 94370 44556", "Puri", "ODRAF-BN3-01"),
-        ("field.worker@aapadaops.odisha.gov.in", "Havildar Dilip Patnaik", "FIELD_WORKER", "+91 94373 44556", "Kendrapara", "ODRAF-BN4-102"),
-        ("ndma.liaison@nic.in", "Col. R. S. Rathore", "OBSERVER", "+91 98110 55667", None, "NDMA-LN-01"),
-        ("observer@aapadaops.odisha.gov.in", "UNDP Disaster Risk Analyst", "OBSERVER", "+91 98110 55667", None, "OBS-EXT-02"),
-        ("citizen@aapadaops.gov.in", "Public Citizen Reporter", "CITIZEN_REPORTER", "+91 94379 99999", None, "CIT-01"),
-    ]
-    for email, name, role, phone, district, badge in users:
+users = [
+    ("admin@aapadaops.odisha.gov.in", "Dr. Manojit Jena (SRC/OSDMA)", "SUPER_ADMIN", "+91 94370 12345", None, "OSDMA-SA-01"),
+    ("director@osdma.gov.in", "Sri Pradeep Kumar Jena, IAS", "SUPER_ADMIN", "+91 94370 11111", None, "OSDMA-DG-01"),
+    ("collector.puri@nic.in", "Dr. Siddharth Shankar Das, IAS", "DISTRICT_COLLECTOR", "+91 94370 11223", "Puri", "IAS-PURI-01"),
+    ("collector.kendrapara@aapadaops.odisha.gov.in", "Amrit Ruturaj, IAS (Collector)", "DISTRICT_COLLECTOR", "+91 94370 54321", "Kendrapara", "IAS-OD-2016"),
+    ("tahasildar.krushnaprasad@nic.in", "Smt. Ananya Mishra, OAS", "INCIDENT_VERIFICATION_OFFICER", "+91 94370 22334", "Puri", "OAS-PURI-03"),
+    ("verification.officer@aapadaops.odisha.gov.in", "Subhashree Mohanty, OAS", "INCIDENT_VERIFICATION_OFFICER", "+91 94371 99887", "Kendrapara", "OAS-IVO-08"),
+    ("bdo.kakatpur@nic.in", "Sri Rajesh Mohanty, OAS", "RESPONSE_COORDINATOR", "+91 94370 33445", "Puri", "BDO-KAK-02"),
+    ("response.coordinator@aapadaops.odisha.gov.in", "Commander Bikram Keshari Ray", "RESPONSE_COORDINATOR", "+91 94372 11223", "Khordha", "EOC-RC-04"),
+    ("odraf.unit03@odisha.gov.in", "Inspector B. K. Nayak", "FIELD_WORKER", "+91 94370 44556", "Puri", "ODRAF-BN3-01"),
+    ("field.worker@aapadaops.odisha.gov.in", "Havildar Dilip Patnaik", "FIELD_WORKER", "+91 94373 44556", "Kendrapara", "ODRAF-BN4-102"),
+    ("ndma.liaison@nic.in", "Col. R. S. Rathore", "OBSERVER", "+91 98110 55667", None, "NDMA-LN-01"),
+    ("observer@aapadaops.odisha.gov.in", "UNDP Disaster Risk Analyst", "OBSERVER", "+91 98110 55667", None, "OBS-EXT-02"),
+    ("citizen@aapadaops.gov.in", "Public Citizen Reporter", "CITIZEN_REPORTER", "+91 94379 99999", None, "CIT-01"),
+]
+for email, name, role, phone, district, badge in users:
+    cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+    if not cur.fetchone():
         cur.execute(
             """INSERT INTO users (id, email, hashed_password, full_name, role, phone_number, is_active, jurisdiction_district, badge_number, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)""",
             (str(uuid.uuid4()), email, default_pwd_hash, name, role, phone, district, badge, now, now)
         )
-    con.commit()
-    print("Users seeded.")
+con.commit()
+print("Users verified and seeded.")
 
 # 3. Seed Tactical Response Teams
 cur.execute("SELECT COUNT(*) FROM response_teams")
